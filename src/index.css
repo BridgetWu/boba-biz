@@ -1,0 +1,49 @@
+:root {
+  --bg: #f7f4ec;
+  --surface: #fffdf8;
+  --ink: #1c2420;
+  --muted: #5c665e;
+  --line: #d8d3c6;
+  --accent: #3d5c48;
+  --accent-soft: #e7efe9;
+  --warn: #7a5c3a;
+  font-family: "Source Sans 3", system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--ink);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}

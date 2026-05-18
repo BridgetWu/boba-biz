@@ -1,0 +1,599 @@
+import { useCallback, useMemo, useState } from "react";
+import "./App.css";
+import { buildWelcomeHeadline, suggestTagline } from "./aiCopy";
+import { MENU_PRESETS } from "./menuPresets";
+import {
+  getPublishedSiteUrl,
+  saveSiteConfig,
+} from "./siteConfigStorage";
+import { TeaShopPreview } from "./TeaShopPreview";
+import type { Accent, HeroStyle, SiteConfig } from "./types";
+
+const STEPS = [
+  "Welcome",
+  "Brand & story",
+  "Front page",
+  "Digital menu",
+  "Pickup & delivery",
+  "Plan",
+] as const;
+
+const ACCENTS: { id: Accent; label: string }[] = [
+  { id: "matcha", label: "Matcha grove" },
+  { id: "earl", label: "Earl & ink" },
+  { id: "chai", label: "Spice route" },
+  { id: "jasmine", label: "Jasmine court" },
+];
+
+const HERO: { id: HeroStyle; title: string; desc: string }[] = [
+  {
+    id: "minimal",
+    title: "Quiet hero",
+    desc: "Headline and buttons only — fast on phones.",
+  },
+  {
+    id: "feature",
+    title: "Featured panel",
+    desc: "Soft highlight card for daily specials.",
+  },
+  {
+    id: "split",
+    title: "Split story",
+    desc: "Narrative column plus a companion aside.",
+  },
+];
+
+const MENUS: { id: keyof typeof MENU_PRESETS; title: string; desc: string }[] =
+  [
+    {
+      id: "classic",
+      title: "Night-market classics",
+      desc: "Pearl blacks, Okinawa swirl, savory popcorn chicken staples.",
+    },
+    {
+      id: "wellness",
+      title: "Fruit & yogurt bar",
+      desc: "Yakult green teas, sparklers, botanical fruit layers.",
+    },
+    {
+      id: "spice",
+      title: "Tiger Thai & salted caps",
+      desc: "Brown-sugar tiger, Thai red teas, salted-cream pours.",
+    },
+  ];
+
+function defaultConfig(): SiteConfig {
+  return {
+    shopName: "",
+    tagline: "",
+    city: "",
+    accent: "matcha",
+    heroStyle: "split",
+    menuItems: MENU_PRESETS.classic.map((item) => ({ ...item })),
+    delivery: {
+      pickup: true,
+      delivery: true,
+      deliveryNote:
+        "Within 3 miles · waives with orders over $25 before 4pm.",
+      shipping: false,
+      hours: "Wed–Sun · 8:00a – 6:00p",
+    },
+    billing: "free",
+  };
+}
+
+export default function App() {
+  const [step, setStep] = useState(0);
+  const [config, setConfig] = useState<SiteConfig>(defaultConfig);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  const headline = useMemo(
+    () => buildWelcomeHeadline(config),
+    [config.shopName, config.city],
+  );
+
+  const applyTagline = useCallback(() => {
+    setConfig((c) => ({
+      ...c,
+      tagline: suggestTagline(c.shopName, c.accent),
+    }));
+  }, []);
+
+  const canNext = useMemo(() => {
+    if (step === 1) return config.shopName.trim().length >= 2;
+    if (step === 4) {
+      return (
+        config.delivery.pickup ||
+        config.delivery.delivery ||
+        config.delivery.shipping
+      );
+    }
+    return true;
+  }, [step, config.shopName, config.delivery]);
+
+  const goNext = () => {
+    if (step < STEPS.length - 1 && canNext) setStep((s) => s + 1);
+  };
+
+  const goBack = () => setStep((s) => Math.max(0, s - 1));
+
+  const publishSite = useCallback(() => {
+    saveSiteConfig(config);
+    window.open(getPublishedSiteUrl(config), "_blank", "noopener,noreferrer");
+  }, [config]);
+
+  const copySiteLink = useCallback(async () => {
+    saveSiteConfig(config);
+    const url = getPublishedSiteUrl(config);
+    try {
+      await navigator.clipboard.writeText(url);
+      setLinkCopied(true);
+      window.setTimeout(() => setLinkCopied(false), 2500);
+    } catch {
+      window.prompt("Copy your site link:", url);
+    }
+  }, [config]);
+
+  const monthlyPrice = 29;
+  const yearlyPrice = 249;
+  const yearlyMonthlyEq = Math.round(yearlyPrice / 12);
+
+  return (
+    <div className="app">
+      <header className="app__bar">
+        <div className="app__barInner">
+          <div className="app__product">
+            <div className="app__productMark" aria-hidden />
+            <div className="app__productText">
+              <span className="app__productName">BobaBiz AI</span>
+              <span className="app__productSub">
+                Website builder for boba & tea shops
+              </span>
+            </div>
+          </div>
+          <span className="app__productSub" style={{ textAlign: "right" }}>
+            Publish-ready pages in minutes
+          </span>
+        </div>
+      </header>
+
+      <div className="app__layout">
+        <aside className="app__wizard">
+          <div className="app__wizardInner">
+            <div className="app__progress" role="tablist" aria-label="Steps">
+              {STEPS.map((label, i) => (
+                <button
+                  key={label}
+                  type="button"
+                  className={
+                    i === step
+                      ? "app__dot app__dot--active"
+                      : i < step
+                        ? "app__dot app__dot--done"
+                        : "app__dot"
+                  }
+                  onClick={() => setStep(i)}
+                >
+                  {i + 1}. {label}
+                </button>
+              ))}
+            </div>
+
+            {step === 0 && (
+              <>
+                <h2 className="app__stepTitle">Launch a polished boba or tea site</h2>
+                <p className="app__stepHint">
+                  Answer a handful of prompts — BobaBiz AI assembles your front
+                  page, digital menu, and delivery story automatically. No code,
+                  no blank canvas.
+                </p>
+                <ul className="app__welcomeList">
+                  <li>Front page tuned for first-time visitors and pickups</li>
+                  <li>Digital menu grouped by what you actually serve</li>
+                  <li>Pickup, local delivery, and shipping toggles with hours</li>
+                </ul>
+                <p className="app__stepHint">
+                  Start on the free testing plan to generate your preview; upgrade
+                  when you&apos;re ready to go live with hosting.
+                </p>
+              </>
+            )}
+
+            {step === 1 && (
+              <>
+                <h2 className="app__stepTitle">Brand & story</h2>
+                <p className="app__stepHint">{headline}</p>
+                <div className="app__field">
+                  <label className="app__label" htmlFor="shop">
+                    Shop name
+                  </label>
+                  <input
+                    id="shop"
+                    className="app__input"
+                    value={config.shopName}
+                    onChange={(e) =>
+                      setConfig({ ...config, shopName: e.target.value })
+                    }
+                    placeholder="e.g. Pearl Alley Boba Lab"
+                    autoComplete="organization"
+                  />
+                </div>
+                <div className="app__field">
+                  <label className="app__label" htmlFor="city">
+                    City or neighborhood
+                  </label>
+                  <input
+                    id="city"
+                    className="app__input"
+                    value={config.city}
+                    onChange={(e) =>
+                      setConfig({ ...config, city: e.target.value })
+                    }
+                    placeholder="e.g. Portland, Pearl District"
+                  />
+                </div>
+                <div className="app__field">
+                  <span className="app__label">Visual palette</span>
+                  <div className="app__chips">
+                    {ACCENTS.map((a) => (
+                      <button
+                        key={a.id}
+                        type="button"
+                        className={
+                          config.accent === a.id
+                            ? "app__chip app__chip--on"
+                            : "app__chip"
+                        }
+                        onClick={() => setConfig({ ...config, accent: a.id })}
+                      >
+                        {a.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="app__field">
+                  <label className="app__label" htmlFor="tag">
+                    Hero headline
+                  </label>
+                  <textarea
+                    id="tag"
+                    className="app__textarea"
+                    value={config.tagline}
+                    onChange={(e) =>
+                      setConfig({ ...config, tagline: e.target.value })
+                    }
+                    placeholder="A short line guests see first"
+                  />
+                </div>
+                <div className="app__aiRow">
+                  <button
+                    type="button"
+                    className="app__btn app__btn--ghost"
+                    onClick={applyTagline}
+                  >
+                    Suggest headline
+                  </button>
+                  <p className="app__aiNote">
+                    Pulls from your name + palette — refine freely.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {step === 2 && (
+              <>
+                <h2 className="app__stepTitle">Front page layout</h2>
+                <p className="app__stepHint">
+                  Pick the hero shape. Pick up tweaks on the right instantly.
+                </p>
+                <div className="app__cards">
+                  {HERO.map((h) => (
+                    <button
+                      key={h.id}
+                      type="button"
+                      className={
+                        config.heroStyle === h.id
+                          ? "app__pick app__pick--on"
+                          : "app__pick"
+                      }
+                      onClick={() =>
+                        setConfig({ ...config, heroStyle: h.id })
+                      }
+                    >
+                      <span className="app__pickTitle">{h.title}</span>
+                      <p className="app__pickDesc">{h.desc}</p>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <h2 className="app__stepTitle">Digital menu starter</h2>
+                <p className="app__stepHint">
+                  Swap curated sets now; replace items later in the editor.
+                </p>
+                <div className="app__cards">
+                  {MENUS.map((m) => {
+                    const active =
+                      config.menuItems[0]?.id === MENU_PRESETS[m.id][0]?.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className={
+                          active ? "app__pick app__pick--on" : "app__pick"
+                        }
+                        onClick={() =>
+                          setConfig({
+                            ...config,
+                            menuItems: MENU_PRESETS[m.id].map((item) => ({
+                              ...item,
+                            })),
+                          })
+                        }
+                      >
+                        <span className="app__pickTitle">{m.title}</span>
+                        <p className="app__pickDesc">{m.desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            {step === 4 && (
+              <>
+                <h2 className="app__stepTitle">Pickup & delivery</h2>
+                <p className="app__stepHint">
+                  Guests see only the options you enable. Hours stay visible in
+                  the order section.
+                </p>
+                <div className="app__rows">
+                  <label className="app__check">
+                    <input
+                      type="checkbox"
+                      checked={config.delivery.pickup}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          delivery: {
+                            ...config.delivery,
+                            pickup: e.target.checked,
+                          },
+                        })
+                      }
+                    />
+                    Counter & scheduled pickup
+                  </label>
+                  <label className="app__check">
+                    <input
+                      type="checkbox"
+                      checked={config.delivery.delivery}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          delivery: {
+                            ...config.delivery,
+                            delivery: e.target.checked,
+                          },
+                        })
+                      }
+                    />
+                    Local delivery
+                  </label>
+                  <label className="app__check">
+                    <input
+                      type="checkbox"
+                      checked={config.delivery.shipping}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          delivery: {
+                            ...config.delivery,
+                            shipping: e.target.checked,
+                          },
+                        })
+                      }
+                    />
+                    Bottle kits & pantry merch shipping
+                  </label>
+                </div>
+                {config.delivery.delivery ? (
+                  <div className="app__field">
+                    <label className="app__label" htmlFor="delnote">
+                      Delivery details
+                    </label>
+                    <textarea
+                      id="delnote"
+                      className="app__textarea"
+                      value={config.delivery.deliveryNote}
+                      onChange={(e) =>
+                        setConfig({
+                          ...config,
+                          delivery: {
+                            ...config.delivery,
+                            deliveryNote: e.target.value,
+                          },
+                        })
+                      }
+                    />
+                  </div>
+                ) : null}
+                <div className="app__field">
+                  <label className="app__label" htmlFor="hours">
+                    Published hours
+                  </label>
+                  <input
+                    id="hours"
+                    className="app__input"
+                    value={config.delivery.hours}
+                    onChange={(e) =>
+                      setConfig({
+                        ...config,
+                        delivery: {
+                          ...config.delivery,
+                          hours: e.target.value,
+                        },
+                      })
+                    }
+                  />
+                </div>
+              </>
+            )}
+
+            {step === 5 && (
+              <>
+                <h2 className="app__stepTitle">Plans</h2>
+                <p className="app__stepHint">
+                  The testing plan unlocks full website generation in this
+                  builder. Paid tiers add hosted publishing with SSL, checkout
+                  add-ons, and priority support — pick what fits your stage.
+                </p>
+                <div className="app__priceGrid">
+                  <button
+                    type="button"
+                    className={
+                      config.billing === "free"
+                        ? "app__pick app__pick--on"
+                        : "app__pick"
+                    }
+                    onClick={() =>
+                      setConfig({ ...config, billing: "free" })
+                    }
+                  >
+                    <span className="app__pickTitle">
+                      Free · Testing plan
+                    </span>
+                    <p className="app__pickDesc">
+                      Generate your pages, tweak copy, and use the live preview.
+                      Ideal for mocks and staff reviews before you subscribe.
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      config.billing === "monthly"
+                        ? "app__pick app__pick--on"
+                        : "app__pick"
+                    }
+                    onClick={() =>
+                      setConfig({ ...config, billing: "monthly" })
+                    }
+                  >
+                    <span className="app__pickTitle">
+                      ${monthlyPrice} / month
+                    </span>
+                    <p className="app__pickDesc">
+                      Hosted live site, SSL, menu editor — pause or migrate
+                      anytime.
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    className={
+                      config.billing === "yearly"
+                        ? "app__pick app__pick--on"
+                        : "app__pick"
+                    }
+                    onClick={() =>
+                      setConfig({ ...config, billing: "yearly" })
+                    }
+                  >
+                    <span className="app__pickTitle">
+                      ${yearlyPrice} / year
+                    </span>
+                    <p className="app__pickDesc">
+                      About ${yearlyMonthlyEq}/mo billed annually — save vs monthly.
+                    </p>
+                  </button>
+                </div>
+                <p className="app__aiNote">
+                  Selected:{" "}
+                  <strong>
+                    {config.billing === "free"
+                      ? "Free testing plan"
+                      : config.billing === "monthly"
+                        ? "Monthly billing"
+                        : "Yearly billing"}
+                  </strong>
+                  .
+                  {config.billing === "free"
+                    ? " You can refine every step anytime; upgrading only affects hosting when you publish."
+                    : " Pricing applies when you publish through BobaBiz AI — your preview is for layout and copy."}
+                </p>
+              </>
+            )}
+
+            <div className="app__navRow">
+              <button
+                type="button"
+                className="app__btn app__btn--ghost"
+                onClick={goBack}
+                disabled={step === 0}
+              >
+                Back
+              </button>
+              {step < STEPS.length - 1 ? (
+                <button
+                  type="button"
+                  className="app__btn app__btn--primary"
+                  onClick={goNext}
+                  disabled={!canNext}
+                >
+                  Continue
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="app__btn app__btn--primary"
+                  onClick={publishSite}
+                  disabled={config.shopName.trim().length < 2}
+                >
+                  Open your website
+                </button>
+              )}
+            </div>
+          </div>
+        </aside>
+
+        <section className="app__preview" aria-label="Website preview">
+          <div className="app__publishBar">
+            <div>
+              <p className="app__previewTag" style={{ margin: 0 }}>
+                Live preview
+              </p>
+              <p className="app__publishHint">
+                Generate a real page you can open in a new tab or share. The
+                builder stays here; your shop site opens at{" "}
+                <code className="app__code">site.html</code>.
+              </p>
+            </div>
+            <div className="app__publishActions">
+              <button
+                type="button"
+                className="app__btn app__btn--primary"
+                onClick={publishSite}
+                disabled={config.shopName.trim().length < 2}
+              >
+                Open your website
+              </button>
+              <button
+                type="button"
+                className="app__btn app__btn--ghost"
+                onClick={() => void copySiteLink()}
+                disabled={config.shopName.trim().length < 2}
+              >
+                {linkCopied ? "Link copied" : "Copy site link"}
+              </button>
+            </div>
+          </div>
+          <div className="app__previewFrame">
+            <TeaShopPreview config={config} />
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
