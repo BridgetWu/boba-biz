@@ -1,3 +1,4 @@
+import { migrateSiteConfig } from "./migrateConfig";
 import type { SiteConfig } from "./types";
 
 export const SITE_CONFIG_STORAGE_KEY = "bobabiz-generated-site";
@@ -10,7 +11,7 @@ export function loadSiteConfig(): SiteConfig | null {
   try {
     const raw = localStorage.getItem(SITE_CONFIG_STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as SiteConfig;
+    return migrateSiteConfig(JSON.parse(raw));
   } catch {
     return null;
   }
@@ -27,7 +28,7 @@ export function decodeConfigFromHash(hash: string): SiteConfig | null {
   if (!match?.[1]) return null;
   try {
     const json = decodeURIComponent(escape(atob(decodeURIComponent(match[1]))));
-    return JSON.parse(json) as SiteConfig;
+    return migrateSiteConfig(JSON.parse(json));
   } catch {
     return null;
   }

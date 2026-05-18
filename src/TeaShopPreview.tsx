@@ -1,16 +1,6 @@
-import type { CSSProperties } from "react";
 import type { SiteConfig } from "./types";
 import { menuIntroLine } from "./aiCopy";
-
-const accentVars: Record<
-  SiteConfig["accent"],
-  { fg: string; soft: string; deep: string }
-> = {
-  matcha: { fg: "#2f4d38", soft: "#e8f0ea", deep: "#1e3224" },
-  earl: { fg: "#2c3a4f", soft: "#e9edf5", deep: "#1c2433" },
-  chai: { fg: "#6b3c2e", soft: "#f3e8e3", deep: "#3d241c" },
-  jasmine: { fg: "#35524a", soft: "#e5f0ec", deep: "#243630" },
-};
+import { siteThemeStyle } from "./theme";
 
 function categoryLabel(c: SiteConfig["menuItems"][0]["category"]): string {
   if (c === "signature") return "Milk teas & café drinks";
@@ -19,7 +9,6 @@ function categoryLabel(c: SiteConfig["menuItems"][0]["category"]): string {
 }
 
 export function TeaShopPreview({ config }: { config: SiteConfig }) {
-  const a = accentVars[config.accent];
   const shop = config.shopName.trim() || "Your boba shop";
   const city = config.city.trim();
   const tagline =
@@ -33,15 +22,13 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
 
   return (
     <div
-      className="tsp"
-      style={
-        {
-          "--tsp-fg": a.fg,
-          "--tsp-soft": a.soft,
-          "--tsp-deep": a.deep,
-        } as CSSProperties
-      }
+      className={`tsp tsp--${config.themeMode}`}
+      style={siteThemeStyle(config.themeMode, config.accentColor)}
     >
+      <div className="tsp__promo">
+        Free pearl upgrade on your first online order this week
+      </div>
+
       <header className="tsp__nav">
         <div className="tsp__brand">
           <span className="tsp__logo" aria-hidden />
@@ -52,8 +39,12 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
         </div>
         <nav className="tsp__links" aria-label="Primary">
           <a href="#home">Home</a>
-          <a href="#menu">Menu</a>
-          <a href="#delivery">Order</a>
+          <a href="#menu" className="tsp__linkAccent">
+            Menu
+          </a>
+          <a href="#delivery" className="tsp__linkCta">
+            Order now
+          </a>
         </nav>
       </header>
 
@@ -92,7 +83,7 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
         <section id="menu" className="tsp__section">
           <div className="tsp__sectionHead">
             <h2 className="tsp__sectionTitle">Digital menu</h2>
-            <p className="tsp__sectionSub">{menuIntroLine(config.accent)}</p>
+            <p className="tsp__sectionSub">{menuIntroLine()}</p>
           </div>
           <div className="tsp__menuGrid">
             {grouped.map(
@@ -168,20 +159,29 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
         .tsp {
           font-family: "Source Sans 3", system-ui, sans-serif;
           color: var(--tsp-deep);
-          background: #fffdf8;
+          background: var(--tsp-page-bg);
           min-height: 100%;
+        }
+        .tsp__promo {
+          background: var(--tsp-promo-bg);
+          color: var(--tsp-promo-ink);
+          text-align: center;
+          font-size: 0.72rem;
+          font-weight: 600;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          padding: 0.45rem 1rem;
         }
         .tsp__nav {
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 1rem;
-          padding: 1rem 1.25rem;
-          border-bottom: 1px solid #e2ded3;
+          padding: 0.85rem 1.25rem;
           position: sticky;
           top: 0;
-          background: rgba(255, 253, 248, 0.94);
-          backdrop-filter: blur(6px);
+          background: var(--tsp-nav-bg);
+          color: var(--tsp-nav-ink);
           z-index: 2;
         }
         .tsp__brand {
@@ -190,46 +190,57 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
           gap: 0.65rem;
         }
         .tsp__logo {
-          width: 2.25rem;
-          height: 2.25rem;
+          width: 2.5rem;
+          height: 2.5rem;
           border-radius: 999px;
-          background: var(--tsp-soft);
-          border: 1px solid #d8d3c6;
+          background: #0a0a0a;
+          border: 2px solid var(--tsp-accent);
           display: inline-block;
+          box-shadow: inset 0 0 0 2px #0a0a0a;
         }
         .tsp__name {
           font-family: "Fraunces", Georgia, serif;
-          font-weight: 600;
-          font-size: 1.05rem;
+          font-weight: 700;
+          font-size: 1rem;
+          color: var(--tsp-accent);
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
         }
         .tsp__city {
-          font-size: 0.85rem;
-          color: #5c665e;
+          font-size: 0.78rem;
+          color: var(--tsp-nav-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
         }
         .tsp__links {
           display: flex;
-          gap: 1rem;
-          font-size: 0.9rem;
+          align-items: center;
+          gap: 1.1rem;
+          font-size: 0.82rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
         }
         .tsp__links a {
-          color: inherit;
+          color: var(--tsp-nav-ink);
           text-decoration: none;
-          border-bottom: 1px solid transparent;
         }
-        .tsp__links a:hover {
-          border-color: var(--tsp-fg);
+        .tsp__linkAccent,
+        .tsp__linkCta {
+          color: var(--tsp-accent) !important;
         }
         .tsp__hero {
           display: grid;
           gap: 1.5rem;
-          padding: 2.25rem 1.25rem 2rem;
-          border-bottom: 1px solid #e2ded3;
+          padding: 2.5rem 1.25rem 2rem;
+          border-bottom: 1px solid var(--tsp-border);
+          background: var(--tsp-hero-bg);
         }
         .tsp__hero--split {
           grid-template-columns: 1.1fr 0.9fr;
         }
         .tsp__hero--feature {
-          background: linear-gradient(120deg, var(--tsp-soft), #fffdf8 55%);
+          background: linear-gradient(120deg, var(--tsp-accent-soft), var(--tsp-hero-bg) 60%);
         }
         @media (max-width: 720px) {
           .tsp__hero--split {
@@ -244,21 +255,27 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
         }
         .tsp__kicker {
           text-transform: uppercase;
-          letter-spacing: 0.12em;
-          font-size: 0.72rem;
-          color: var(--tsp-fg);
-          margin: 0 0 0.5rem;
+          letter-spacing: 0.14em;
+          font-size: 0.7rem;
+          font-weight: 600;
+          color: var(--tsp-muted);
+          margin: 0 0 0.65rem;
         }
         .tsp__h1 {
           font-family: "Fraunces", Georgia, serif;
-          font-size: clamp(1.75rem, 4vw, 2.35rem);
-          margin: 0 0 0.75rem;
-          color: var(--tsp-deep);
+          font-size: clamp(2rem, 5vw, 2.85rem);
+          font-weight: 800;
+          line-height: 1.05;
+          margin: 0 0 0.85rem;
+          color: var(--tsp-accent);
+          text-transform: uppercase;
+          letter-spacing: -0.02em;
         }
         .tsp__lead {
           margin: 0 0 1.25rem;
-          color: #3b4540;
+          color: var(--tsp-muted);
           font-size: 1.02rem;
+          max-width: 32rem;
         }
         .tsp__ctaRow {
           display: flex;
@@ -269,46 +286,50 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          padding: 0.65rem 1rem;
+          padding: 0.7rem 1.15rem;
           border-radius: 999px;
-          border: 1px solid var(--tsp-fg);
           text-decoration: none;
-          font-weight: 600;
-          font-size: 0.92rem;
+          font-weight: 700;
+          font-size: 0.88rem;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
         }
         .tsp__btn--primary {
-          background: var(--tsp-fg);
-          color: #fffdf8;
+          background: var(--tsp-accent);
+          color: var(--tsp-btn-on-primary);
+          border: 2px solid var(--tsp-accent);
         }
         .tsp__btn--ghost {
           background: transparent;
           color: var(--tsp-deep);
+          border: 2px solid var(--tsp-deep);
         }
         .tsp__heroAside {
           align-self: start;
         }
         .tsp__asideCard {
-          border: 1px solid #e2ded3;
+          border: 1px solid var(--tsp-border);
           border-radius: 0.75rem;
           padding: 1rem 1.1rem;
-          background: #fff;
+          background: var(--tsp-surface);
         }
         .tsp__h2 {
           font-family: "Fraunces", Georgia, serif;
           font-size: 1.15rem;
           margin: 0 0 0.35rem;
+          color: var(--tsp-accent);
         }
         .tsp__asideText {
           margin: 0;
-          color: #3b4540;
+          color: var(--tsp-muted);
           font-size: 0.95rem;
         }
         .tsp__section {
           padding: 2rem 1.25rem;
         }
         .tsp__section--alt {
-          background: #f7f4ec;
-          border-top: 1px solid #e2ded3;
+          background: var(--tsp-section-alt);
+          border-top: 1px solid var(--tsp-border);
         }
         .tsp__sectionHead {
           max-width: 36rem;
@@ -318,10 +339,12 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
           font-family: "Fraunces", Georgia, serif;
           font-size: 1.5rem;
           margin: 0 0 0.35rem;
+          text-transform: uppercase;
+          letter-spacing: 0.02em;
         }
         .tsp__sectionSub {
           margin: 0;
-          color: #3b4540;
+          color: var(--tsp-muted);
         }
         .tsp__menuGrid {
           display: grid;
@@ -337,7 +360,9 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
           font-family: "Fraunces", Georgia, serif;
           font-size: 1.05rem;
           margin: 0 0 0.75rem;
-          color: var(--tsp-fg);
+          color: var(--tsp-accent);
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
         }
         .tsp__menuList {
           list-style: none;
@@ -357,12 +382,13 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
           font-family: "Fraunces", Georgia, serif;
         }
         .tsp__menuPrice {
-          color: var(--tsp-fg);
+          color: var(--tsp-accent);
           white-space: nowrap;
+          font-weight: 700;
         }
         .tsp__menuDesc {
           margin: 0.25rem 0 0;
-          color: #4a5550;
+          color: var(--tsp-muted);
           font-size: 0.92rem;
         }
         .tsp__deliveryGrid {
@@ -375,8 +401,8 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
           }
         }
         .tsp__card {
-          background: #fff;
-          border: 1px solid #e2ded3;
+          background: var(--tsp-surface);
+          border: 1px solid var(--tsp-border);
           border-radius: 0.75rem;
           padding: 1rem 1.1rem;
         }
@@ -384,10 +410,11 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
           font-family: "Fraunces", Georgia, serif;
           font-size: 1.05rem;
           margin: 0 0 0.5rem;
+          color: var(--tsp-accent);
         }
         .tsp__cardBody {
           margin: 0;
-          color: #3b4540;
+          color: var(--tsp-muted);
           font-size: 0.95rem;
         }
         .tsp__opts {
@@ -409,25 +436,25 @@ export function TeaShopPreview({ config }: { config: SiteConfig }) {
           width: 0.55rem;
           height: 0.55rem;
           border-radius: 999px;
-          background: #c8c2b4;
+          background: var(--tsp-border);
         }
         .tsp__opts li[data-on="true"]::before {
-          background: var(--tsp-fg);
+          background: var(--tsp-accent);
         }
         .tsp__cardNote {
           margin: 0.75rem 0 0;
           font-size: 0.9rem;
-          color: #3b4540;
+          color: var(--tsp-muted);
         }
         .tsp__foot {
           padding: 1.25rem;
-          border-top: 1px solid #e2ded3;
+          border-top: 1px solid var(--tsp-border);
           display: flex;
           flex-wrap: wrap;
           gap: 0.5rem;
           justify-content: space-between;
           font-size: 0.85rem;
-          color: #5c665e;
+          color: var(--tsp-muted);
         }
         .tsp__footMeta {
           opacity: 0.85;

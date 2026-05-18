@@ -1,7 +1,17 @@
 /** Billing: free testing tier or paid hosted plans */
 export type BillingPlan = "free" | "monthly" | "yearly";
 
-export type Accent = "matcha" | "earl" | "chai" | "jasmine";
+export type ThemeMode = "light" | "dark";
+
+export type AccentColor =
+  | "red"
+  | "blue"
+  | "gold"
+  | "green"
+  | "purple"
+  | "orange"
+  | "pink"
+  | "teal";
 
 export type HeroStyle = "minimal" | "feature" | "split";
 
@@ -17,7 +27,8 @@ export interface SiteConfig {
   shopName: string;
   tagline: string;
   city: string;
-  accent: Accent;
+  themeMode: ThemeMode;
+  accentColor: AccentColor;
   heroStyle: HeroStyle;
   menuItems: MenuItem[];
   delivery: {

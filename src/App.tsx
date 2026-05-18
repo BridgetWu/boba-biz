@@ -1,13 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
 import "./App.css";
 import { buildWelcomeHeadline, suggestTagline } from "./aiCopy";
+import { defaultSiteConfig } from "./migrateConfig";
 import { MENU_PRESETS } from "./menuPresets";
+import { ACCENT_OPTIONS, builderThemeStyle } from "./theme";
 import {
   getPublishedSiteUrl,
   saveSiteConfig,
 } from "./siteConfigStorage";
 import { TeaShopPreview } from "./TeaShopPreview";
-import type { Accent, HeroStyle, SiteConfig } from "./types";
+import type { HeroStyle, SiteConfig } from "./types";
 
 const STEPS = [
   "Welcome",
@@ -17,13 +19,6 @@ const STEPS = [
   "Pickup & delivery",
   "Plan",
 ] as const;
-
-const ACCENTS: { id: Accent; label: string }[] = [
-  { id: "matcha", label: "Matcha grove" },
-  { id: "earl", label: "Earl & ink" },
-  { id: "chai", label: "Spice route" },
-  { id: "jasmine", label: "Jasmine court" },
-];
 
 const HERO: { id: HeroStyle; title: string; desc: string }[] = [
   {
@@ -62,29 +57,9 @@ const MENUS: { id: keyof typeof MENU_PRESETS; title: string; desc: string }[] =
     },
   ];
 
-function defaultConfig(): SiteConfig {
-  return {
-    shopName: "",
-    tagline: "",
-    city: "",
-    accent: "matcha",
-    heroStyle: "split",
-    menuItems: MENU_PRESETS.classic.map((item) => ({ ...item })),
-    delivery: {
-      pickup: true,
-      delivery: true,
-      deliveryNote:
-        "Within 3 miles · waives with orders over $25 before 4pm.",
-      shipping: false,
-      hours: "Wed–Sun · 8:00a – 6:00p",
-    },
-    billing: "free",
-  };
-}
-
 export default function App() {
   const [step, setStep] = useState(0);
-  const [config, setConfig] = useState<SiteConfig>(defaultConfig);
+  const [config, setConfig] = useState<SiteConfig>(defaultSiteConfig);
   const [linkCopied, setLinkCopied] = useState(false);
 
   const headline = useMemo(
@@ -95,7 +70,7 @@ export default function App() {
   const applyTagline = useCallback(() => {
     setConfig((c) => ({
       ...c,
-      tagline: suggestTagline(c.shopName, c.accent),
+      tagline: suggestTagline(c.shopName),
     }));
   }, []);
 
@@ -139,7 +114,10 @@ export default function App() {
   const yearlyMonthlyEq = Math.round(yearlyPrice / 12);
 
   return (
-    <div className="app">
+    <div
+      className="app"
+      style={builderThemeStyle(config.themeMode, config.accentColor)}
+    >
       <header className="app__bar">
         <div className="app__barInner">
           <div className="app__product">
@@ -233,23 +211,63 @@ export default function App() {
                   />
                 </div>
                 <div className="app__field">
-                  <span className="app__label">Visual palette</span>
-                  <div className="app__chips">
-                    {ACCENTS.map((a) => (
+                  <span className="app__label">Site theme</span>
+                  <p className="app__paletteHint">
+                    Like Kung Fu Tea: dark header, light or dark body, bold accent on headlines.
+                  </p>
+                  <div className="app__themeToggle" role="group" aria-label="Light or dark site">
+                    <button
+                      type="button"
+                      className={
+                        config.themeMode === "light"
+                          ? "app__themeBtn app__themeBtn--on"
+                          : "app__themeBtn"
+                      }
+                      onClick={() => setConfig({ ...config, themeMode: "light" })}
+                    >
+                      Light
+                    </button>
+                    <button
+                      type="button"
+                      className={
+                        config.themeMode === "dark"
+                          ? "app__themeBtn app__themeBtn--on"
+                          : "app__themeBtn"
+                      }
+                      onClick={() => setConfig({ ...config, themeMode: "dark" })}
+                    >
+                      Dark
+                    </button>
+                  </div>
+                </div>
+                <div className="app__field">
+                  <span className="app__label">Accent color</span>
+                  <div className="app__accentGrid" role="listbox" aria-label="Accent color">
+                    {ACCENT_OPTIONS.map((accent) => (
                       <button
-                        key={a.id}
+                        key={accent.id}
                         type="button"
+                        role="option"
+                        aria-selected={config.accentColor === accent.id}
+                        aria-label={accent.label}
+                        title={accent.label}
                         className={
-                          config.accent === a.id
-                            ? "app__chip app__chip--on"
-                            : "app__chip"
+                          config.accentColor === accent.id
+                            ? "app__accentSwatch app__accentSwatch--on"
+                            : "app__accentSwatch"
                         }
-                        onClick={() => setConfig({ ...config, accent: a.id })}
-                      >
-                        {a.label}
-                      </button>
+                        style={{ backgroundColor: accent.hex }}
+                        onClick={() =>
+                          setConfig({ ...config, accentColor: accent.id })
+                        }
+                      />
                     ))}
                   </div>
+                  <p className="app__accentLabel">
+                    Selected:{" "}
+                    {ACCENT_OPTIONS.find((a) => a.id === config.accentColor)?.label ??
+                      "Red"}
+                  </p>
                 </div>
                 <div className="app__field">
                   <label className="app__label" htmlFor="tag">
@@ -274,7 +292,7 @@ export default function App() {
                     Suggest headline
                   </button>
                   <p className="app__aiNote">
-                    Pulls from your name + palette — refine freely.
+                    Pulls from your shop name — refine freely.
                   </p>
                 </div>
               </>

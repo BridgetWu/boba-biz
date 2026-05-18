@@ -1,27 +1,12 @@
-import type { Accent, SiteConfig } from "./types";
+import type { SiteConfig } from "./types";
 
-const taglinesByAccent: Record<Accent, string[]> = {
-  matcha: [
-    "Matcha lattes, whisked marble swirls.",
-    "Ceremony-grade foam over cane-sweet milk.",
-    "Uji matcha & QQ layers, same-day steeped.",
-  ],
-  earl: [
-    "Earl-grey milk tea, silk cap optional.",
-    "London fog boba cart next door vibes.",
-    "Bergamot cream cap on cold pearl brews.",
-  ],
-  chai: [
-    "Tiger stripes & spiced Thai pulls.",
-    "Bold karak-style pulls, chewy pearls.",
-    "Brown-sugar slabs, slow-glazed pearls.",
-  ],
-  jasmine: [
-    "Clear floral teas · fruit burst cups.",
-    "Jasmine QQ cups, lightness first.",
-    "Botanical fruit teas shaken to order.",
-  ],
-};
+const TAGLINES = [
+  "Your neighborhood bubble tea, brewed bold.",
+  "Pearls, foam, and flavor — your way.",
+  "Fresh-steeped boba, made to order.",
+  "America's bubble tea — your block, your cup.",
+  "Tiger stripes, cheese foam, classic pearls.",
+];
 
 function hashString(s: string): number {
   let h = 0;
@@ -32,10 +17,9 @@ function hashString(s: string): number {
   return Math.abs(h);
 }
 
-export function suggestTagline(shopName: string, accent: Accent): string {
-  const list = taglinesByAccent[accent];
-  const i = hashString(shopName || "boba") % list.length;
-  return list[i] ?? list[0]!;
+export function suggestTagline(shopName: string): string {
+  const i = hashString(shopName || "boba") % TAGLINES.length;
+  return TAGLINES[i] ?? TAGLINES[0]!;
 }
 
 export function buildWelcomeHeadline(config: Pick<SiteConfig, "shopName" | "city">): string {
@@ -47,16 +31,6 @@ export function buildWelcomeHeadline(config: Pick<SiteConfig, "shopName" | "city
   return `${name} — boba steeped to order`;
 }
 
-export function menuIntroLine(accent: Accent): string {
-  const map: Record<Accent, string> = {
-    matcha:
-      "Matcha caps, latte marbling, toppings from boba to cheese foam.",
-    earl:
-      "Foam-topped blacks & oolongs, sweetness dialed shot-by-shot.",
-    chai:
-      "Tiger sugar pulls, spiced milk reds, Okinawa swirl menu.",
-    jasmine:
-      "Fruit puree sparklers & jasmine coolers with chewy QQ mixes.",
-  };
-  return map[accent];
+export function menuIntroLine(): string {
+  return "Milk teas, fruit teas, QQ toppings — sweetness & ice your call.";
 }
