@@ -9,6 +9,8 @@ export const MENU_PRESETS: Record<string, MenuItem[]> = {
         "Ceylon and Assam brew, cane sugar ice level, boba simmered in honey syrup.",
       price: "$5.75",
       category: "signature",
+      sectionId: "signature",
+      itemType: "drink",
       customization: {
         sweetnessLevels: ["0%", "25%", "50%", "75%", "100%"],
         toppings: [
@@ -25,6 +27,8 @@ export const MENU_PRESETS: Record<string, MenuItem[]> = {
         "Roasted Okinawa brown sugar swirl, oat or whole milk, hot or cold.",
       price: "$6.25",
       category: "signature",
+      sectionId: "signature",
+      itemType: "drink",
       customization: {
         sweetnessLevels: ["0%", "25%", "50%", "75%", "100%"],
         toppings: [
@@ -41,6 +45,8 @@ export const MENU_PRESETS: Record<string, MenuItem[]> = {
         "Light winter melon tea, calamansi, basil seed, and coconut jelly.",
       price: "$5.95",
       category: "house",
+      sectionId: "house",
+      itemType: "drink",
       customization: {
         sweetnessLevels: ["0%", "25%", "50%", "75%", "100%"],
         toppings: [
@@ -57,6 +63,8 @@ export const MENU_PRESETS: Record<string, MenuItem[]> = {
         "Shatter-crisp marinade, plum powder shaker, pickled radish bites.",
       price: "$8.95",
       category: "seasonal",
+      sectionId: "seasonal",
+      itemType: "food",
     },
   ],
 };

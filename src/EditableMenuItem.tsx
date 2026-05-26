@@ -1,5 +1,6 @@
 import { useState, useRef, ChangeEvent } from "react";
 import type { MenuItem } from "./types";
+import { generateItemDescription } from "./aiCopy";
 
 interface EditableMenuItemProps {
   item: MenuItem;
@@ -195,14 +196,41 @@ export function EditableMenuItem({ item, onUpdate }: EditableMenuItemProps) {
           autoFocus
         />
       ) : (
-        <p
-          className="tsp__menuDesc tsp__menuDesc--editable"
-          onClick={handleDescriptionClick}
-          title="Click to edit"
-        >
-          {item.description}
-        </p>
+        <>
+          <p
+            className="tsp__menuDesc tsp__menuDesc--editable"
+            onClick={handleDescriptionClick}
+            title="Click to edit"
+          >
+            {item.description}
+          </p>
+          <button
+            type="button"
+            className="tsp__menuAddBtn tsp__menuAddBtn--small"
+            onClick={() =>
+              onUpdate({ ...item, description: generateItemDescription(item.id) })
+            }
+          >
+            AI Generate
+          </button>
+        </>
       )}
+      <label className="tsp__checkRow" style={{ marginTop: "0.5rem" }}>
+        <input
+          type="checkbox"
+          checked={item.itemType === "food"}
+          onChange={(e) =>
+            onUpdate({
+              ...item,
+              itemType: e.target.checked ? "food" : "drink",
+            })
+          }
+        />
+        <span>Non-Drink item</span>
+      </label>
+      {item.itemType === "food" ? (
+        <p className="tsp__cardBody">Sweetness and toppings are disabled for non-drink items.</p>
+      ) : null}
     </li>
   );
 }

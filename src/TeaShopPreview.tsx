@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
-import type { DeliveryOrder, MenuItem, SiteConfig, ToppingOption } from "./types";
-import { menuIntroLine } from "./aiCopy";
+import type { DeliveryOrder, LanguageCode, MenuItem, SiteConfig, ToppingOption } from "./types";
 import { siteThemeStyle } from "./theme";
 import { EditableMenuItem } from "./EditableMenuItem";
 
@@ -19,12 +18,6 @@ interface PaymentForm {
   cardNumber: string;
   expirationDate: string;
   cvv: string;
-}
-
-function categoryLabel(c: SiteConfig["menuItems"][0]["category"]): string {
-  if (c === "signature") return "Milk teas & cafe drinks";
-  if (c === "seasonal") return "Limited & seasonal";
-  return "Fruit teas & coolers";
 }
 
 function parsePrice(price: string): number {
@@ -56,332 +49,238 @@ function maskCvv(value: string): string {
   return value.replace(/\D/g, "").slice(0, 4);
 }
 
+const UI_COPY: Record<LanguageCode, Record<string, string>> = {
+  en: {
+    home: "Home",
+    menu: "Menu",
+    delivery: "Delivery / Order Online",
+    viewMenu: "View digital menu",
+    deliveryPickup: "Delivery & pickup",
+    digitalMenu: "Digital menu",
+    customizeAdd: "Customize & add",
+    noImage: "No image",
+    checkoutTitle: "Delivery checkout",
+    checkoutSub: "Build your order, add your address, and complete payment details below.",
+    yourCart: "Your cart",
+    cartEmpty: "Your cart is empty.",
+    sweetness: "Sweetness",
+    toppings: "Toppings",
+    subtotal: "Subtotal",
+    deliveryFee: "Delivery fee",
+    total: "Total",
+    checkout: "Checkout",
+    deliveryAddress: "Delivery address",
+    cardholderName: "Cardholder Name",
+    cardNumber: "Card Number",
+    expirationDate: "Expiration Date",
+    placeOrder: "Place order",
+    orderPlaced: "Order",
+    orderPlacedSuffix: "placed. Total charged:",
+    customize: "Customize",
+    basePrice: "Base price",
+    sweetnessLevel: "Sweetness level",
+    cancel: "Cancel",
+    addToOrder: "Add to order",
+    sectionTitle: "Section title",
+    addItem: "+ Add item",
+    delete: "Delete",
+    addSection: "+ Add menu section",
+    nonDrinkMessage: "This item is marked as non-drink, so drink customizations are hidden.",
+  },
+  "zh-Hant": {
+    home: "\u9996\u9801",
+    menu: "\u83dc\u55ae",
+    delivery: "\u5916\u9001 / \u7dda\u4e0a\u9ede\u9910",
+    viewMenu: "\u67e5\u770b\u6578\u4f4d\u83dc\u55ae",
+    deliveryPickup: "\u5916\u9001\u8207\u81ea\u53d6",
+    digitalMenu: "\u6578\u4f4d\u83dc\u55ae",
+    customizeAdd: "\u5ba2\u88fd\u4e26\u52a0\u5165",
+    noImage: "\u7121\u5716\u7247",
+    checkoutTitle: "\u5916\u9001\u7d50\u5e33",
+    checkoutSub: "\u5efa\u7acb\u60a8\u7684\u8a02\u55ae\uff0c\u586b\u5beb\u5730\u5740\uff0c\u4e26\u5b8c\u6210\u4ed8\u6b3e\u8cc7\u8a0a\u3002",
+    yourCart: "\u4f60\u7684\u8cfc\u7269\u8eca",
+    cartEmpty: "\u8cfc\u7269\u8eca\u76ee\u524d\u662f\u7a7a\u7684\u3002",
+    sweetness: "\u751c\u5ea6",
+    toppings: "\u914d\u6599",
+    subtotal: "\u5c0f\u8a08",
+    deliveryFee: "\u5916\u9001\u8cbb",
+    total: "\u7e3d\u8a08",
+    checkout: "\u7d50\u5e33",
+    deliveryAddress: "\u5916\u9001\u5730\u5740",
+    cardholderName: "\u6301\u5361\u4eba\u59d3\u540d",
+    cardNumber: "\u5361\u865f",
+    expirationDate: "\u5230\u671f\u65e5",
+    placeOrder: "\u9001\u51fa\u8a02\u55ae",
+    orderPlaced: "\u8a02\u55ae",
+    orderPlacedSuffix: "\u4e0b\u55ae\u6210\u529f\uff0c\u7e3d\u6263\u6b3e\uff1a",
+    customize: "\u5ba2\u88fd",
+    basePrice: "\u57fa\u790e\u50f9\u683c",
+    sweetnessLevel: "\u751c\u5ea6\u9078\u64c7",
+    cancel: "\u53d6\u6d88",
+    addToOrder: "\u52a0\u5165\u8a02\u55ae",
+    sectionTitle: "\u5206\u985e\u6a19\u984c",
+    addItem: "+ \u65b0\u589e\u54c1\u9805",
+    delete: "\u522a\u9664",
+    addSection: "+ \u65b0\u589e\u83dc\u55ae\u5206\u985e",
+    nonDrinkMessage: "\u6b64\u54c1\u9805\u70ba\u975e\u98f2\u54c1\uff0c\u56e0\u6b64\u4e0d\u986f\u793a\u751c\u5ea6\u8207\u914d\u6599\u8a2d\u5b9a\u3002",
+  },
+};
+
+const TERM_TRANSLATIONS: Record<string, string> = {
+  "Classic Pearl Black Milk Tea": "\u7d93\u5178\u73cd\u73e0\u7d05\u8336\u62ff\u9435",
+  "Okinawa Roast Milk Tea": "\u6c96\u7e69\u9ed1\u7cd6\u70d8\u7119\u5976\u8336",
+  "Winter Melon Lemonade QQ": "\u51ac\u74dc\u6ab8\u6aacQQ",
+  "Taiwanese Popcorn Chicken": "\u53f0\u5f0f\u9e7d\u9165\u96de",
+  "Ceylon and Assam brew, cane sugar ice level, boba simmered in honey syrup.": "\u932b\u862d\u8207\u963f\u85a9\u59c6\u62fc\u914d\u8336\u5e95\uff0c\u53ef\u8abf\u7cd6\u51b0\uff0c\u8702\u871c\u7cd6\u6f3f\u6162\u71ac\u73cd\u73e0\u3002",
+  "Roasted Okinawa brown sugar swirl, oat or whole milk, hot or cold.": "\u6c96\u7e69\u9ed1\u7cd6\u9999\u6c23\uff0c\u71d5\u9ea5\u6216\u5168\u8102\u725b\u5976\u53ef\u9078\uff0c\u51b7\u71b1\u7686\u5b9c\u3002",
+  "Light winter melon tea, calamansi, basil seed, and coconut jelly.": "\u6e05\u723d\u51ac\u74dc\u8336\u642d\u914d\u91d1\u6843\u3001\u7f85\u52d2\u7c7d\u8207\u6930\u679c\u3002",
+  "Shatter-crisp marinade, plum powder shaker, pickled radish bites.": "\u5916\u9165\u5167\u5ae9\u91c0\u88fd\u96de\u584a\uff0c\u6885\u7c89\u63d0\u5473\uff0c\u9644\u9183\u863f\u8514\u3002",
+  "Boba pearls": "\u73cd\u73e0",
+  "Lychee jelly": "\u8354\u679d\u84df\u84bb",
+  "Aloe vera": "\u8606\u8588",
+  Pudding: "\u5e03\u4e01",
+  "Grass jelly": "\u4ed9\u8349",
+  "Cheese foam": "\u5976\u84cb",
+  "Tapioca Pearls": "\u73cd\u73e0",
+  "Coconut Jelly": "\u6930\u679c",
+};
+
+function tTerm(lang: LanguageCode, value: string): string {
+  return lang === "zh-Hant" ? TERM_TRANSLATIONS[value] ?? value : value;
+}
+
+function InlineEditableText({
+  value,
+  className,
+  multiline = false,
+  editable = false,
+  onCommit,
+}: {
+  value: string;
+  className: string;
+  multiline?: boolean;
+  editable?: boolean;
+  onCommit?: (nextValue: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  if (!editable) return multiline ? <p className={className}>{value}</p> : <span className={className}>{value}</span>;
+
+  const commit = () => {
+    setEditing(false);
+    const next = draft.trim() || value;
+    if (next !== value && onCommit) onCommit(next);
+  };
+
+  if (editing) {
+    if (multiline) {
+      return <textarea className="tsp__inlineEditor" value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); commit(); } }} autoFocus />;
+    }
+    return <input className="tsp__inlineEditor" value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); } }} autoFocus />;
+  }
+
+  const open = () => { setDraft(value); setEditing(true); };
+  return multiline ? <p className={`${className} tsp__editable`} onClick={open}>{value}</p> : <span className={`${className} tsp__editable`} onClick={open}>{value}</span>;
+}
+
 export function TeaShopPreview({
   config,
   onMenuItemUpdate,
   onAddMenuItem,
+  onAddMenuSection,
+  onDeleteMenuSection,
+  onRenameMenuSection,
+  onLanguageToggle,
+  onMarketingCopyUpdate,
 }: {
   config: SiteConfig;
   onMenuItemUpdate?: (updatedItem: MenuItem) => void;
-  onAddMenuItem?: (category?: MenuItem["category"]) => void;
+  onAddMenuItem?: (sectionId?: string) => void;
+  onAddMenuSection?: () => void;
+  onDeleteMenuSection?: (sectionId: string) => void;
+  onRenameMenuSection?: (sectionId: string, title: string) => void;
+  onLanguageToggle?: () => void;
+  onMarketingCopyUpdate?: (field: "heroLead" | "customizationHook" | "menuBanner", value: string) => void;
 }) {
-  const shop = config.shopName.trim() || "Your boba shop";
+  const lang = config.language;
+  const ui = UI_COPY[lang];
+  const marketing = config.marketingCopy[lang];
+  const shop = config.shopName.trim() || (lang === "zh-Hant" ? "\u4f60\u7684\u624b\u6416\u98f2\u5e97" : "Your boba shop");
   const city = config.city.trim();
-  const tagline = config.tagline.trim() || "Bubble tea brewed fresh — toppings your way.";
+  const tagline = config.tagline.trim() || (lang === "zh-Hant"
+    ? "\u73fe\u6ce1\u624b\u6416\u3001\u914d\u6599\u96a8\u4f60\u642d"
+    : "Bubble tea brewed fresh - toppings your way.");
   const isOwnerEditor = Boolean(onMenuItemUpdate || onAddMenuItem);
   const [activeItem, setActiveItem] = useState<MenuItem | null>(null);
   const [selectedSweetness, setSelectedSweetness] = useState("");
   const [selectedToppings, setSelectedToppings] = useState<ToppingOption[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [payment, setPayment] = useState<PaymentForm>({
-    cardholderName: "",
-    cardNumber: "",
-    expirationDate: "",
-    cvv: "",
-  });
+  const [payment, setPayment] = useState<PaymentForm>({ cardholderName: "", cardNumber: "", expirationDate: "", cvv: "" });
   const [checkoutError, setCheckoutError] = useState("");
   const [placedOrder, setPlacedOrder] = useState<DeliveryOrder | null>(null);
 
-  const grouped = (["signature", "house", "seasonal"] as const).map((key) => ({
-    key,
-    label: categoryLabel(key),
-    items: config.menuItems.filter((m) => m.category === key),
-  }));
-
+  const grouped = config.menuSections.map((section) => ({ key: section.id, label: section.title, items: config.menuItems.filter((m) => m.sectionId === section.id) }));
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + lineTotal(item), 0), [cart]);
   const deliveryFee = subtotal === 0 ? 0 : subtotal >= 25 ? 0 : 3.99;
   const total = subtotal + deliveryFee;
 
-  const activeSweetnessOptions = activeItem?.customization?.sweetnessLevels?.length
-    ? activeItem.customization.sweetnessLevels
-    : config.sweetnessOptions;
-  const activeToppingOptions = activeItem?.customization?.toppings?.length
-    ? activeItem.customization.toppings
-    : config.toppingOptions.map((name) => ({
-        id: name.toLowerCase().replace(/\s+/g, "-"),
-        name,
-        priceDelta: 0,
-      }));
-
-  const openCustomizer = (item: MenuItem) => {
-    setActiveItem(item);
-    setSelectedSweetness((item.customization?.sweetnessLevels ?? config.sweetnessOptions)[2] ?? "");
-    setSelectedToppings([]);
-  };
+  const activeSweetnessOptions = activeItem?.customization?.sweetnessLevels?.length ? activeItem.customization.sweetnessLevels : config.sweetnessOptions;
+  const activeToppingOptions = activeItem?.customization?.toppings?.length ? activeItem.customization.toppings : config.toppingOptions.map((name) => ({ id: name.toLowerCase().replace(/\s+/g, "-"), name, priceDelta: 0 }));
 
   const addToCart = () => {
     if (!activeItem) return;
-    const newItem: CartItem = {
-      id: `${activeItem.id}-${Date.now()}`,
-      menuItemId: activeItem.id,
-      itemName: activeItem.name,
-      quantity: 1,
-      unitBasePrice: parsePrice(activeItem.price),
-      sweetnessLevel: selectedSweetness || undefined,
-      toppings: selectedToppings,
-    };
-    setCart((prev) => [...prev, newItem]);
+    setCart((prev) => [...prev, { id: `${activeItem.id}-${Date.now()}`, menuItemId: activeItem.id, itemName: tTerm(lang, activeItem.name), quantity: 1, unitBasePrice: parsePrice(activeItem.price), sweetnessLevel: selectedSweetness || undefined, toppings: activeItem.itemType === "food" ? [] : selectedToppings }]);
     setActiveItem(null);
   };
 
   const placeOrder = () => {
     setCheckoutError("");
-    if (cart.length === 0) {
-      setCheckoutError("Add at least one item before checkout.");
-      return;
-    }
-    if (!deliveryAddress.trim()) {
-      setCheckoutError("Delivery address is required.");
-      return;
-    }
+    if (cart.length === 0) return setCheckoutError(lang === "zh-Hant" ? "???????????" : "Add at least one item before checkout.");
+    if (!deliveryAddress.trim()) return setCheckoutError(lang === "zh-Hant" ? "????????" : "Delivery address is required.");
     const cardDigits = payment.cardNumber.replace(/\D/g, "");
-    if (payment.cardholderName.trim().length < 2) {
-      setCheckoutError("Cardholder name is required.");
-      return;
-    }
-    if (cardDigits.length < 13 || cardDigits.length > 19) {
-      setCheckoutError("Enter a valid card number.");
-      return;
-    }
-    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(payment.expirationDate)) {
-      setCheckoutError("Use MM/YY for the expiration date.");
-      return;
-    }
-    if (!/^\d{3,4}$/.test(payment.cvv)) {
-      setCheckoutError("CVV must be 3 or 4 digits.");
-      return;
-    }
+    if (payment.cardholderName.trim().length < 2) return setCheckoutError(lang === "zh-Hant" ? "?????????" : "Cardholder name is required.");
+    if (cardDigits.length < 13 || cardDigits.length > 19) return setCheckoutError(lang === "zh-Hant" ? "????????" : "Enter a valid card number.");
+    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(payment.expirationDate)) return setCheckoutError(lang === "zh-Hant" ? "?????? MM/YY?" : "Use MM/YY for the expiration date.");
+    if (!/^\d{3,4}$/.test(payment.cvv)) return setCheckoutError(lang === "zh-Hant" ? "CVV ?? 3 ? 4 ??" : "CVV must be 3 or 4 digits.");
 
-    const order: DeliveryOrder = {
-      id: `ord-${Date.now()}`,
-      createdAtIso: new Date().toISOString(),
-      items: cart.map((item) => ({
-        menuItemId: item.menuItemId,
-        itemName: item.itemName,
-        quantity: item.quantity,
-        unitBasePrice: item.unitBasePrice,
-        sweetnessLevel: item.sweetnessLevel,
-        toppings: item.toppings,
-        lineTotal: lineTotal(item),
-      })),
-      subtotal,
-      deliveryFee,
-      total,
-      deliveryAddress: deliveryAddress.trim(),
-      payment: {
-        cardholderName: payment.cardholderName.trim(),
-        maskedCardNumber: `**** **** **** ${cardDigits.slice(-4)}`,
-        expirationDate: payment.expirationDate,
-        maskedCvv: "***",
-      },
-    };
-
-    setPlacedOrder(order);
-    setCart([]);
-    setDeliveryAddress("");
-    setPayment({ cardholderName: "", cardNumber: "", expirationDate: "", cvv: "" });
+    setPlacedOrder({ id: `ord-${Date.now()}`, createdAtIso: new Date().toISOString(), items: cart.map((item) => ({ menuItemId: item.menuItemId, itemName: item.itemName, quantity: item.quantity, unitBasePrice: item.unitBasePrice, sweetnessLevel: item.sweetnessLevel, toppings: item.toppings, lineTotal: lineTotal(item) })), subtotal, deliveryFee, total, deliveryAddress: deliveryAddress.trim(), payment: { cardholderName: payment.cardholderName.trim(), maskedCardNumber: `**** **** **** ${cardDigits.slice(-4)}`, expirationDate: payment.expirationDate, maskedCvv: "***" } });
+    setCart([]); setDeliveryAddress(""); setPayment({ cardholderName: "", cardNumber: "", expirationDate: "", cvv: "" });
   };
 
-  return (
-    <div className={`tsp tsp--${config.themeMode}`} style={siteThemeStyle(config.themeMode, config.accentColor)}>
-      <div className="tsp__promo">{config.promoMessage}</div>
-
-      <header className="tsp__nav">
-        <div className="tsp__brand">
-          <span className="tsp__logo" aria-hidden />
-          <div>
-            <div className="tsp__name">{shop}</div>
-            {city ? <div className="tsp__city">{city}</div> : null}
-          </div>
-        </div>
-        <nav className="tsp__links" aria-label="Primary">
-          <a href="#home">Home</a>
-          <a href="#menu" className="tsp__linkAccent">Menu</a>
-          {config.isDeliveryEnabled ? (
-            <a href="#delivery" className="tsp__linkCta">Delivery / Order Online</a>
-          ) : null}
-        </nav>
+  return (<div className={`tsp tsp--${config.themeMode}`} style={siteThemeStyle(config.themeMode, config.accentColor)}>
+      <div className="tsp__promo">{config.localizedPromoMessage[lang]}</div>
+      <header className="tsp__nav"><div className="tsp__brand"><span className="tsp__logo" aria-hidden /><div><div className="tsp__name">{shop}</div>{city ? <div className="tsp__city">{city}</div> : null}</div></div>
+        <nav className="tsp__links" aria-label="Primary"><a href="#home">{ui.home}</a><a href="#menu" className="tsp__linkAccent">{ui.menu}</a>{config.isDeliveryEnabled ? <a href="#delivery" className="tsp__linkCta">{ui.delivery}</a> : null}{onLanguageToggle ? <button type="button" className="tsp__langToggle" onClick={onLanguageToggle}>{lang === "en" ? "EN / \u7e41" : "\u7e41 / EN"}</button> : null}</nav>
       </header>
 
       <main>
-        <section id="home" className={`tsp__hero tsp__hero--${config.heroStyle}`}>
-          <div className="tsp__heroInner">
-            <p className="tsp__kicker">Sweetness & ice your call</p>
-            <h1 className="tsp__h1">{tagline}</h1>
-            <p className="tsp__lead">Brew-to-order teas, chewy QQ, salted foams - order ahead for quicker pickup windows.</p>
-            <div className="tsp__ctaRow">
-              <a className="tsp__btn tsp__btn--primary" href="#menu">View digital menu</a>
-              {config.isDeliveryEnabled ? (
-                <a className="tsp__btn tsp__btn--ghost" href="#delivery">Delivery & pickup</a>
-              ) : null}
-            </div>
-          </div>
+        <section id="home" className={`tsp__hero tsp__hero--${config.heroStyle}`}><div className="tsp__heroInner">
+          <InlineEditableText className="tsp__kicker" value={marketing.customizationHook} editable={Boolean(onMarketingCopyUpdate)} onCommit={(value) => onMarketingCopyUpdate?.("customizationHook", value)} />
+          <h1 className="tsp__h1">{tagline}</h1>
+          <InlineEditableText className="tsp__lead" multiline value={marketing.heroLead} editable={Boolean(onMarketingCopyUpdate)} onCommit={(value) => onMarketingCopyUpdate?.("heroLead", value)} />
+          <div className="tsp__ctaRow"><a className="tsp__btn tsp__btn--primary" href="#menu">{ui.viewMenu}</a>{config.isDeliveryEnabled ? <a className="tsp__btn tsp__btn--ghost" href="#delivery">{ui.deliveryPickup}</a> : null}</div>
+        </div></section>
+
+        <section id="menu" className="tsp__section"><div className="tsp__sectionHead"><h2 className="tsp__sectionTitle">{ui.digitalMenu}</h2><InlineEditableText className="tsp__sectionSub" multiline value={marketing.menuBanner} editable={Boolean(onMarketingCopyUpdate)} onCommit={(value) => onMarketingCopyUpdate?.("menuBanner", value)} /></div>
+          <div className="tsp__menuGrid">{grouped.map((g) => (<div key={g.key} className="tsp__menuCol"><div className="tsp__menuColHead">{onRenameMenuSection ? <input className="tsp__input" value={g.label} onChange={(e) => onRenameMenuSection(g.key, e.target.value)} aria-label={ui.sectionTitle} /> : <h3 className="tsp__menuHeading">{g.label}</h3>}{onAddMenuItem ? <button type="button" className="tsp__menuAddBtn tsp__menuAddBtn--small" onClick={() => onAddMenuItem(g.key)}>{ui.addItem}</button> : null}{onDeleteMenuSection ? <button type="button" className="tsp__menuAddBtn tsp__menuAddBtn--small" onClick={() => onDeleteMenuSection(g.key)} disabled={config.menuSections.length <= 1}>{ui.delete}</button> : null}</div>
+              <ul className="tsp__menuList">{g.items.map((item) => isOwnerEditor ? (<EditableMenuItem key={item.id} item={item} onUpdate={onMenuItemUpdate || (() => {})} />) : (<li key={item.id} className="tsp__menuItem"><button type="button" className="tsp__menuOrderBtn" onClick={() => { setActiveItem(item); setSelectedSweetness(""); setSelectedToppings([]); }}>{item.image ? <img src={item.image} alt={tTerm(lang, item.name)} className="tsp__menuPublicImage" /> : <div className="tsp__menuPublicImage tsp__menuPublicImage--placeholder" aria-hidden>{ui.noImage}</div>}<div className="tsp__menuTop"><span className="tsp__menuName">{tTerm(lang, item.name)}</span><span className="tsp__menuPrice">{item.price}</span></div><p className="tsp__menuDesc">{tTerm(lang, item.description)}</p><span className="tsp__menuAddLabel">{ui.customizeAdd}</span></button></li>))}</ul></div>))}</div>
+          {onAddMenuSection ? <button type="button" className="tsp__menuAddBtn" onClick={onAddMenuSection}>{ui.addSection}</button> : null}
         </section>
 
-        <section id="menu" className="tsp__section">
-          <div className="tsp__sectionHead">
-            <h2 className="tsp__sectionTitle">Digital menu</h2>
-            <p className="tsp__sectionSub">{menuIntroLine()}</p>
-          </div>
-          <div className="tsp__menuGrid">
-            {grouped.map((g) =>
-              g.items.length > 0 ? (
-                <div key={g.key} className="tsp__menuCol">
-                  <div className="tsp__menuColHead">
-                    <h3 className="tsp__menuHeading">{g.label}</h3>
-                    {onAddMenuItem ? (
-                      <button
-                        type="button"
-                        className="tsp__menuAddBtn tsp__menuAddBtn--small"
-                        onClick={() => onAddMenuItem(g.key)}
-                      >
-                        + Add
-                      </button>
-                    ) : null}
-                  </div>
-                  <ul className="tsp__menuList">
-                    {g.items.map((item) =>
-                      isOwnerEditor ? (
-                        <EditableMenuItem key={item.id} item={item} onUpdate={onMenuItemUpdate || (() => {})} />
-                      ) : (
-                        <li key={item.id} className="tsp__menuItem">
-                          <button type="button" className="tsp__menuOrderBtn" onClick={() => openCustomizer(item)}>
-                            {item.image ? (
-                              <img src={item.image} alt={item.name} className="tsp__menuPublicImage" />
-                            ) : (
-                              <div className="tsp__menuPublicImage tsp__menuPublicImage--placeholder" aria-hidden>
-                                No image
-                              </div>
-                            )}
-                            <div className="tsp__menuTop"><span className="tsp__menuName">{item.name}</span><span className="tsp__menuPrice">{item.price}</span></div>
-                            <p className="tsp__menuDesc">{item.description}</p>
-                            <span className="tsp__menuAddLabel">Customize & add</span>
-                          </button>
-                        </li>
-                      ),
-                    )}
-                  </ul>
-                </div>
-              ) : null,
-            )}
-          </div>
-          {onAddMenuItem ? (
-            <button type="button" className="tsp__menuAddBtn" onClick={() => onAddMenuItem("signature")}>
-              + Add menu item
-            </button>
-          ) : null}
-        </section>
-
-        {config.isDeliveryEnabled ? (
-          <section id="delivery" className="tsp__section tsp__section--alt">
-            <div className="tsp__sectionHead">
-              <h2 className="tsp__sectionTitle">Delivery checkout</h2>
-              <p className="tsp__sectionSub">Build your order, add your address, and complete payment details below.</p>
-            </div>
-            <div className="tsp__checkoutGrid">
-              <div className="tsp__card">
-                <h3 className="tsp__cardTitle">Your cart</h3>
-                {cart.length === 0 ? <p className="tsp__cardBody">Your cart is empty.</p> : null}
-                {cart.map((item) => (
-                  <div key={item.id} className="tsp__cartLine">
-                    <div>
-                      <strong>{item.itemName}</strong>
-                      {item.sweetnessLevel ? <p className="tsp__cardBody">Sweetness: {item.sweetnessLevel}</p> : null}
-                      {item.toppings.length > 0 ? (
-                        <p className="tsp__cardBody">Toppings: {item.toppings.map((t) => `${t.name}${t.priceDelta ? ` (+${formatUsd(t.priceDelta)})` : ""}`).join(", ")}</p>
-                      ) : null}
-                    </div>
-                    <div className="tsp__menuPrice">{formatUsd(lineTotal(item))}</div>
-                  </div>
-                ))}
-                <div className="tsp__totals">
-                  <div><span>Subtotal</span><span>{formatUsd(subtotal)}</span></div>
-                  <div><span>Delivery fee</span><span>{formatUsd(deliveryFee)}</span></div>
-                  <div className="tsp__grand"><span>Total</span><span>{formatUsd(total)}</span></div>
-                </div>
-              </div>
-
-              <div className="tsp__card">
-                <h3 className="tsp__cardTitle">Checkout</h3>
-                <label className="tsp__fieldLabel" htmlFor="address">Delivery address</label>
-                <input id="address" className="tsp__input" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="123 Main St, Apt 4, City" />
-
-                <label className="tsp__fieldLabel" htmlFor="cardName">Cardholder Name</label>
-                <input id="cardName" className="tsp__input" value={payment.cardholderName} onChange={(e) => setPayment((prev) => ({ ...prev, cardholderName: e.target.value }))} />
-
-                <label className="tsp__fieldLabel" htmlFor="cardNumber">Card Number</label>
-                <input id="cardNumber" className="tsp__input" inputMode="numeric" value={payment.cardNumber} onChange={(e) => setPayment((prev) => ({ ...prev, cardNumber: maskCardNumber(e.target.value) }))} placeholder="1234 5678 9012 3456" />
-
-                <div className="tsp__row2">
-                  <div>
-                    <label className="tsp__fieldLabel" htmlFor="exp">Expiration Date</label>
-                    <input id="exp" className="tsp__input" inputMode="numeric" value={payment.expirationDate} onChange={(e) => setPayment((prev) => ({ ...prev, expirationDate: maskExpDate(e.target.value) }))} placeholder="MM/YY" />
-                  </div>
-                  <div>
-                    <label className="tsp__fieldLabel" htmlFor="cvv">CVV</label>
-                    <input id="cvv" className="tsp__input" type="password" inputMode="numeric" value={payment.cvv} onChange={(e) => setPayment((prev) => ({ ...prev, cvv: maskCvv(e.target.value) }))} placeholder="123" />
-                  </div>
-                </div>
-
-                {checkoutError ? <p className="tsp__error">{checkoutError}</p> : null}
-                <button type="button" className="tsp__btn tsp__btn--primary" onClick={placeOrder}>Place order</button>
-                {placedOrder ? <p className="tsp__success">Order {placedOrder.id} placed. Total charged: {formatUsd(placedOrder.total)}.</p> : null}
-              </div>
-            </div>
-          </section>
-        ) : null}
+        {config.isDeliveryEnabled ? <section id="delivery" className="tsp__section tsp__section--alt"><div className="tsp__sectionHead"><h2 className="tsp__sectionTitle">{ui.checkoutTitle}</h2><p className="tsp__sectionSub">{ui.checkoutSub}</p></div><div className="tsp__checkoutGrid"><div className="tsp__card"><h3 className="tsp__cardTitle">{ui.yourCart}</h3>{cart.length === 0 ? <p className="tsp__cardBody">{ui.cartEmpty}</p> : null}{cart.map((item) => (<div key={item.id} className="tsp__cartLine"><div><strong>{item.itemName}</strong>{item.sweetnessLevel ? <p className="tsp__cardBody">{ui.sweetness}: {tTerm(lang, item.sweetnessLevel)}</p> : null}{item.toppings.length > 0 ? <p className="tsp__cardBody">{ui.toppings}: {item.toppings.map((t) => `${tTerm(lang, t.name)}${t.priceDelta ? ` (+${formatUsd(t.priceDelta)})` : ""}`).join(", ")}</p> : null}</div><div className="tsp__menuPrice">{formatUsd(lineTotal(item))}</div></div>))}<div className="tsp__totals"><div><span>{ui.subtotal}</span><span>{formatUsd(subtotal)}</span></div><div><span>{ui.deliveryFee}</span><span>{formatUsd(deliveryFee)}</span></div><div className="tsp__grand"><span>{ui.total}</span><span>{formatUsd(total)}</span></div></div></div>
+            <div className="tsp__card"><h3 className="tsp__cardTitle">{ui.checkout}</h3><label className="tsp__fieldLabel" htmlFor="address">{ui.deliveryAddress}</label><input id="address" className="tsp__input" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} />
+              <label className="tsp__fieldLabel" htmlFor="cardName">{ui.cardholderName}</label><input id="cardName" className="tsp__input" value={payment.cardholderName} onChange={(e) => setPayment((prev) => ({ ...prev, cardholderName: e.target.value }))} />
+              <label className="tsp__fieldLabel" htmlFor="cardNumber">{ui.cardNumber}</label><input id="cardNumber" className="tsp__input" inputMode="numeric" value={payment.cardNumber} onChange={(e) => setPayment((prev) => ({ ...prev, cardNumber: maskCardNumber(e.target.value) }))} placeholder="1234 5678 9012 3456" />
+              <div className="tsp__row2"><div><label className="tsp__fieldLabel" htmlFor="exp">{ui.expirationDate}</label><input id="exp" className="tsp__input" inputMode="numeric" value={payment.expirationDate} onChange={(e) => setPayment((prev) => ({ ...prev, expirationDate: maskExpDate(e.target.value) }))} placeholder="MM/YY" /></div><div><label className="tsp__fieldLabel" htmlFor="cvv">CVV</label><input id="cvv" className="tsp__input" type="password" inputMode="numeric" value={payment.cvv} onChange={(e) => setPayment((prev) => ({ ...prev, cvv: maskCvv(e.target.value) }))} placeholder="123" /></div></div>
+              {checkoutError ? <p className="tsp__error">{checkoutError}</p> : null}<button type="button" className="tsp__btn tsp__btn--primary" onClick={placeOrder}>{ui.placeOrder}</button>{placedOrder ? <p className="tsp__success">{ui.orderPlaced} {placedOrder.id} {ui.orderPlacedSuffix} {formatUsd(placedOrder.total)}.</p> : null}
+            </div></div></section> : null}
       </main>
 
-      {activeItem ? (
-        <div className="tsp__modalBackdrop" role="dialog" aria-modal="true" aria-label="Customize drink">
-          <div className="tsp__modal">
-            <h3 className="tsp__cardTitle">Customize {activeItem.name}</h3>
-            <p className="tsp__cardBody">Base price: {activeItem.price}</p>
-
-            <div>
-              <p className="tsp__fieldLabel">Sweetness level</p>
-              <div className="tsp__chips">
-                {activeSweetnessOptions.map((option) => (
-                  <button key={option} type="button" className={selectedSweetness === option ? "tsp__chip tsp__chip--on" : "tsp__chip"} onClick={() => setSelectedSweetness(option)}>
-                    {option}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="tsp__fieldLabel">Toppings</p>
-              <div className="tsp__toppingList">
-                {activeToppingOptions.map((option) => {
-                  const checked = selectedToppings.some((t) => t.id === option.id);
-                  return (
-                    <label key={option.id} className="tsp__checkRow">
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={(e) => {
-                          setSelectedToppings((prev) =>
-                            e.target.checked
-                              ? [...prev, option]
-                              : prev.filter((t) => t.id !== option.id),
-                          );
-                        }}
-                      />
-                      <span>{option.name} {option.priceDelta ? `(+${formatUsd(option.priceDelta)})` : ""}</span>
-                    </label>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="tsp__ctaRow">
-              <button type="button" className="tsp__btn tsp__btn--ghost" onClick={() => setActiveItem(null)}>Cancel</button>
-              <button type="button" className="tsp__btn tsp__btn--primary" onClick={addToCart}>Add to order</button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      {activeItem ? <div className="tsp__modalBackdrop" role="dialog" aria-modal="true"><div className="tsp__modal"><h3 className="tsp__cardTitle">{ui.customize} {tTerm(lang, activeItem.name)}</h3><p className="tsp__cardBody">{ui.basePrice}: {activeItem.price}</p>
+        {activeItem.itemType !== "food" ? <><div><p className="tsp__fieldLabel">{ui.sweetnessLevel}</p><div className="tsp__chips">{activeSweetnessOptions.map((option) => <button key={option} type="button" className={selectedSweetness === option ? "tsp__chip tsp__chip--on" : "tsp__chip"} onClick={() => setSelectedSweetness(option)}>{tTerm(lang, option)}</button>)}</div></div><div><p className="tsp__fieldLabel">{ui.toppings}</p><div className="tsp__toppingList">{activeToppingOptions.map((option) => { const checked = selectedToppings.some((t) => t.id === option.id); return <label key={option.id} className="tsp__checkRow"><input type="checkbox" checked={checked} onChange={(e) => setSelectedToppings((prev) => e.target.checked ? [...prev, option] : prev.filter((t) => t.id !== option.id))} /><span>{tTerm(lang, option.name)} {option.priceDelta ? `(+${formatUsd(option.priceDelta)})` : ""}</span></label>; })}</div></div></> : <p className="tsp__cardBody">{ui.nonDrinkMessage}</p>}
+        <div className="tsp__ctaRow"><button type="button" className="tsp__btn tsp__btn--ghost" onClick={() => setActiveItem(null)}>{ui.cancel}</button><button type="button" className="tsp__btn tsp__btn--primary" onClick={addToCart}>{ui.addToOrder}</button></div>
+      </div></div> : null}
 
       <style>{`
         .tsp { font-family: "Source Sans 3", system-ui, sans-serif; color: var(--tsp-deep); background: var(--tsp-page-bg); min-height: 100%; }
@@ -393,6 +292,7 @@ export function TeaShopPreview({
         .tsp__city { font-size: .78rem; color: var(--tsp-nav-muted); text-transform: uppercase; letter-spacing: .08em; }
         .tsp__links { display: flex; align-items: center; gap: 1.1rem; font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
         .tsp__links a { color: var(--tsp-nav-ink); text-decoration: none; }
+        .tsp__langToggle { border: 1px solid var(--tsp-border); background: transparent; color: var(--tsp-nav-ink); border-radius: 999px; padding: .2rem .55rem; font: inherit; cursor: pointer; }
         .tsp__linkAccent, .tsp__linkCta { color: var(--tsp-accent) !important; }
         .tsp__hero { display: grid; gap: 1.5rem; padding: 2.5rem 1.25rem 2rem; border-bottom: 1px solid var(--tsp-border); background: var(--tsp-hero-bg); }
         .tsp__heroInner { max-width: 38rem; }
@@ -408,8 +308,9 @@ export function TeaShopPreview({
         .tsp__sectionHead { max-width: 36rem; margin-bottom: 1.5rem; }
         .tsp__sectionTitle { font-family: "Fraunces", Georgia, serif; font-size: 1.5rem; margin: 0 0 .35rem; text-transform: uppercase; letter-spacing: .02em; }
         .tsp__sectionSub { margin: 0; color: var(--tsp-muted); }
-        .tsp__menuGrid { display: grid; gap: 1.5rem; }
-        @media (min-width: 720px) { .tsp__menuGrid { grid-template-columns: repeat(3, 1fr); gap: 1.25rem; } }
+        .tsp__menuGrid { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
+        @media (min-width: 720px) { .tsp__menuGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; } }
+        @media (min-width: 1024px) { .tsp__menuGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
         .tsp__menuHeading { font-family: "Fraunces", Georgia, serif; font-size: 1.05rem; margin: 0 0 .75rem; color: var(--tsp-accent); text-transform: uppercase; letter-spacing: .04em; }
         .tsp__menuColHead { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
         .tsp__menuList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1rem; }
@@ -424,25 +325,6 @@ export function TeaShopPreview({
         .tsp__menuName { font-family: "Fraunces", Georgia, serif; }
         .tsp__menuPrice { color: var(--tsp-accent); white-space: nowrap; font-weight: 700; }
         .tsp__menuDesc { margin: .25rem 0 0; color: var(--tsp-muted); font-size: .92rem; }
-        .tsp__menuImageWrapper { width: 100%; }
-        .tsp__menuImage {
-          width: 100%;
-          aspect-ratio: 4 / 3;
-          height: auto;
-          object-fit: contain;
-          border-radius: .5rem;
-          border: 1px solid var(--tsp-border);
-          background: var(--tsp-surface);
-        }
-        .tsp__menuImagePlaceholder {
-          width: 100%;
-          aspect-ratio: 4 / 3;
-          border: 2px dashed var(--tsp-border);
-          border-radius: .5rem;
-          background: var(--tsp-surface);
-          display: grid;
-          place-items: center;
-        }
         .tsp__card { background: var(--tsp-surface); border: 1px solid var(--tsp-border); border-radius: .75rem; padding: 1rem 1.1rem; }
         .tsp__cardTitle { font-family: "Fraunces", Georgia, serif; font-size: 1.05rem; margin: 0 0 .5rem; color: var(--tsp-accent); }
         .tsp__cardBody { margin: 0; color: var(--tsp-muted); font-size: .95rem; }
@@ -464,7 +346,9 @@ export function TeaShopPreview({
         .tsp__chip--on { background: var(--tsp-accent-soft); border-color: var(--tsp-accent); color: var(--tsp-accent); font-weight: 700; }
         .tsp__toppingList { display: grid; gap: .35rem; }
         .tsp__checkRow { display: flex; align-items: center; gap: .5rem; color: var(--tsp-muted); }
+        .tsp__editable { cursor: text; border-bottom: 1px dashed transparent; }
+        .tsp__editable:hover { border-bottom-color: var(--tsp-accent); }
+        .tsp__inlineEditor { width: 100%; font: inherit; border: 1px solid var(--tsp-accent); border-radius: .45rem; background: var(--tsp-surface); color: var(--tsp-deep); padding: .35rem .5rem; }
       `}</style>
-    </div>
-  );
+    </div>);
 }

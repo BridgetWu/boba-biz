@@ -1,6 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
 import "./App.css";
-import { buildWelcomeHeadline, suggestTagline } from "./aiCopy";
+import {
+  buildWelcomeHeadline,
+  generateHeroHeadline,
+  generatePromoMessage,
+  suggestTagline,
+} from "./aiCopy";
 import { defaultSiteConfig } from "./migrateConfig";
 import { MENU_PRESETS } from "./menuPresets";
 import { ACCENT_OPTIONS, builderThemeStyle } from "./theme";
@@ -11,14 +16,73 @@ import {
 import { TeaShopPreview } from "./TeaShopPreview";
 import type { HeroStyle, SiteConfig, MenuItem } from "./types";
 
-const STEPS = [
-  "Welcome",
-  "Brand & story",
-  "Front page",
-  "Digital menu",
-  "Pickup & delivery",
-  "Plan",
-] as const;
+const BUILDER_COPY = {
+  en: {
+    steps: ["Welcome", "Brand & story", "Front page", "Digital menu", "Pickup & delivery", "Plan"],
+    launchTitle: "Launch a polished boba or tea site",
+    launchBody:
+      "Answer a handful of prompts - BobaBiz AI assembles your front page, digital menu, and delivery story automatically. No code, no blank canvas.",
+    launchBullets: [
+      "Front page tuned for first-time visitors and pickups",
+      "Digital menu grouped by what you actually serve",
+      "Pickup, local delivery, and shipping toggles with hours",
+    ],
+    launchFooter:
+      "Start on the free testing plan to generate your preview; upgrade when you're ready to go live with hosting.",
+    topPromo: "Top promo message",
+    back: "Back",
+    continue: "Continue",
+    openSite: "Open your website",
+    brandStory: "Brand & story",
+    frontPageLayout: "Front page layout",
+    menuStarter: "Digital menu starter",
+    pickupDelivery: "Pickup & delivery",
+    plans: "Plans",
+    siteTheme: "Site theme",
+    accentColor: "Accent color",
+    heroHeadline: "Hero headline",
+    deliveryDetails: "Delivery details",
+    publishedHours: "Published hours",
+    sweetnessPresets: "Sweetness presets",
+    toppingsPresets: "Toppings presets",
+    enableDelivery: "Enable Online Delivery",
+    counterPickup: "Counter & scheduled pickup",
+    localDelivery: "Local delivery",
+    shipping: "Bottle kits & pantry merch shipping",
+  },
+  "zh-Hant": {
+    steps: ["歡迎", "品牌與故事", "首頁版面", "數位菜單", "自取與外送", "方案"],
+    launchTitle: "快速建立專業的手搖飲網站",
+    launchBody:
+      "回答幾個簡單問題，BobaBiz AI 會自動生成首頁、數位菜單與外送資訊。無需寫程式，也不用從空白開始。",
+    launchBullets: [
+      "首頁針對新客與自取需求最佳化",
+      "數位菜單依實際品項分組呈現",
+      "可切換自取、外送與宅配並顯示營業時間",
+    ],
+    launchFooter: "先用免費測試方案預覽網站，準備上線時再升級。",
+    topPromo: "頂部促銷訊息",
+    back: "返回",
+    continue: "繼續",
+    openSite: "開啟你的網站",
+    brandStory: "品牌與故事",
+    frontPageLayout: "首頁版面",
+    menuStarter: "數位菜單起始內容",
+    pickupDelivery: "自取與外送",
+    plans: "方案",
+    siteTheme: "網站主題",
+    accentColor: "強調色",
+    heroHeadline: "首頁主標",
+    deliveryDetails: "外送資訊",
+    publishedHours: "對外營業時間",
+    sweetnessPresets: "甜度預設",
+    toppingsPresets: "配料預設",
+    enableDelivery: "啟用線上外送",
+    counterPickup: "櫃檯與預約自取",
+    localDelivery: "在地外送",
+    shipping: "瓶裝組合與周邊寄送",
+  },
+} as const;
 
 const HERO: { id: HeroStyle; title: string; desc: string }[] = [
   {
@@ -47,6 +111,11 @@ const MENUS: { id: keyof typeof MENU_PRESETS; title: string; desc: string }[] =
     },
   ];
 
+function localizedToppingLabel(lang: "en" | "zh-Hant", value: string): string {
+  if (lang === "en") return value;
+  return TOPPING_LABELS[value] ?? value;
+}
+
 const SWEETNESS_PRESETS = ["0%", "25%", "50%", "75%", "100%"] as const;
 const TOPPING_PRESETS = [
   "Boba pearls",
@@ -57,16 +126,101 @@ const TOPPING_PRESETS = [
   "Cheese foam",
 ] as const;
 
+const UI_TEXT = {
+  en: {
+    shopName: "Shop name",
+    city: "City or neighborhood",
+    light: "Light",
+    dark: "Dark",
+    aiGenerate: "AI Generate",
+    suggestHeadline: "Suggest headline",
+    suggestHint: "Pulls from your shop name - refine freely.",
+    frontHint: "Pick the hero shape. Pick up tweaks on the right instantly.",
+    heroA: "Quiet hero",
+    heroADesc: "Headline and buttons only - fast on phones.",
+    heroB: "Featured panel",
+    heroBDesc: "Soft highlight card for daily specials.",
+    heroC: "Split story",
+    heroCDesc: "Narrative column plus a companion aside.",
+    menuHint: "Swap curated sets now; replace items later in the editor.",
+    menuPresetTitle: "Night-market classics",
+    menuPresetDesc: "Pearl blacks, Okinawa swirl, savory popcorn chicken staples.",
+    addMenuSection: "+ Add menu section",
+    deliveryHint: "Guests see only the options you enable. Hours stay visible in the order section.",
+    addSweetness: "Add custom sweetness option",
+    addTopping: "Add custom topping option",
+    add: "+ Add",
+    plansHint:
+      "The testing plan unlocks full website generation in this builder. Paid tiers add hosted publishing with SSL, checkout add-ons, and priority support - pick what fits your stage.",
+    livePreview: "Live preview",
+    livePreviewHint:
+      "Generate a real page you can open in a new tab or share. The builder stays here; your shop site opens at",
+    linkCopied: "Link copied",
+    copyLink: "Copy site link",
+    selected: "Selected:",
+  },
+  "zh-Hant": {
+    shopName: "\u5e97\u540d",
+    city: "\u57ce\u5e02\u6216\u5546\u5708",
+    light: "\u660e\u4eae",
+    dark: "\u6697\u8272",
+    aiGenerate: "AI \u751f\u6210",
+    suggestHeadline: "\u5efa\u8b70\u4e3b\u6a19",
+    suggestHint: "\u6839\u64da\u4f60\u7684\u5e97\u540d\u751f\u6210\uff0c\u53ef\u4ee5\u81ea\u7531\u518d\u8abf\u6574\u3002",
+    frontHint: "\u5148\u9078\u64c7\u9996\u9801\u7248\u578b\uff0c\u53f3\u5074\u6703\u5373\u6642\u66f4\u65b0\u3002",
+    heroA: "\u7c21\u6f54\u9996\u9801",
+    heroADesc: "\u53ea\u986f\u793a\u6a19\u984c\u8207\u6309\u9215\uff0c\u884c\u52d5\u7248\u8f09\u5165\u66f4\u5feb\u3002",
+    heroB: "\u4e3b\u6253\u5340\u584a",
+    heroBDesc: "\u4ee5\u67d4\u548c\u91cd\u9ede\u5361\u5448\u73fe\u7576\u65e5\u63a8\u85a6\u3002",
+    heroC: "\u5206\u6b04\u6545\u4e8b",
+    heroCDesc: "\u5de6\u53f3\u5206\u6b04\u6574\u5408\u54c1\u724c\u6545\u4e8b\u8207\u88dc\u5145\u8cc7\u8a0a\u3002",
+    menuHint: "\u5148\u5957\u7528\u7cbe\u9078\u83dc\u55ae\uff0c\u4e4b\u5f8c\u53ef\u5728\u7de8\u8f2f\u5668\u518d\u66f4\u63db\u3002",
+    menuPresetTitle: "\u591c\u5e02\u7d93\u5178",
+    menuPresetDesc: "\u7d93\u5178\u73cd\u73e0\u8336\u3001\u6c96\u7e69\u98a8\u5473\u8207\u9e79\u9165\u96de\u4e00\u6b21\u5230\u4f4d\u3002",
+    addMenuSection: "+ \u65b0\u589e\u83dc\u55ae\u5206\u985e",
+    deliveryHint: "\u9867\u5ba2\u53ea\u6703\u770b\u5230\u4f60\u555f\u7528\u7684\u9078\u9805\uff0c\u71df\u696d\u6642\u9593\u6703\u986f\u793a\u5728\u8a02\u55ae\u5340\u3002",
+    addSweetness: "\u65b0\u589e\u81ea\u8a02\u751c\u5ea6",
+    addTopping: "\u65b0\u589e\u81ea\u8a02\u914d\u6599",
+    add: "+ \u65b0\u589e",
+    plansHint:
+      "\u6e2c\u8a66\u65b9\u6848\u53ef\u5b8c\u6574\u751f\u6210\u7db2\u7ad9\u3002\u4ed8\u8cbb\u65b9\u6848\u5305\u542b SSL \u8a17\u7ba1\u3001\u7d50\u5e33\u52a0\u503c\u8207\u512a\u5148\u652f\u63f4\u3002",
+    livePreview: "\u5373\u6642\u9810\u89bd",
+    livePreviewHint:
+      "\u7522\u751f\u4e00\u500b\u53ef\u5728\u65b0\u5206\u9801\u958b\u555f\u6216\u5206\u4eab\u7684\u5be6\u969b\u9801\u9762\u3002\u7de8\u8f2f\u5668\u6703\u7559\u5728\u9019\u88e1\uff1b\u4f60\u7684\u7db2\u7ad9\u6703\u958b\u5728",
+    linkCopied: "\u5df2\u8907\u88fd\u9023\u7d50",
+    copyLink: "\u8907\u88fd\u7db2\u7ad9\u9023\u7d50",
+    selected: "\u5df2\u9078\u64c7\uff1a",
+  },
+} as const;
+
+const TOPPING_LABELS: Record<string, string> = {
+  "Boba pearls": "\u73cd\u73e0",
+  Pudding: "\u5e03\u4e01",
+  "Lychee jelly": "\u8354\u679d\u84df\u84bb",
+  "Aloe vera": "\u8606\u8588",
+  "Grass jelly": "\u4ed9\u8349",
+  "Cheese foam": "\u5976\u84cb",
+};
+
 export default function App() {
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState<SiteConfig>(defaultSiteConfig);
   const [linkCopied, setLinkCopied] = useState(false);
   const [customSweetness, setCustomSweetness] = useState("");
   const [customTopping, setCustomTopping] = useState("");
+  const copy = BUILDER_COPY[config.language];
+  const ui = UI_TEXT[config.language];
+
+  const toggleLanguage = useCallback(() => {
+    setConfig((c) => ({
+      ...c,
+      language: c.language === "en" ? "zh-Hant" : "en",
+    }));
+  }, []);
 
   const headline = useMemo(
-    () => buildWelcomeHeadline(config),
-    [config.shopName, config.city],
+    () => buildWelcomeHeadline(config, config.language),
+    [config.shopName, config.city, config.language],
   );
 
   const applyTagline = useCallback(() => {
@@ -89,7 +243,7 @@ export default function App() {
   }, [step, config.shopName, config.delivery]);
 
   const goNext = () => {
-    if (step < STEPS.length - 1 && canNext) setStep((s) => s + 1);
+    if (step < copy.steps.length - 1 && canNext) setStep((s) => s + 1);
   };
 
   const goBack = () => setStep((s) => Math.max(0, s - 1));
@@ -120,7 +274,7 @@ export default function App() {
     }));
   }, []);
 
-  const addMenuItem = useCallback((category: MenuItem["category"] = "signature") => {
+  const addMenuItem = useCallback((sectionId?: string) => {
     const id = `custom-${Date.now()}`;
     setConfig((c) => ({
       ...c,
@@ -131,11 +285,58 @@ export default function App() {
           name: "New menu item",
           description: "Tap to edit description",
           price: "$0.00",
-          category,
+          category: "signature",
+          sectionId: sectionId ?? c.menuSections[0]?.id ?? "signature",
+          itemType: "drink",
         },
       ],
     }));
   }, []);
+
+  const addMenuSection = useCallback(() => {
+    const id = `section-${Date.now()}`;
+    setConfig((c) => ({
+      ...c,
+      menuSections: [...c.menuSections, { id, title: "New section" }],
+    }));
+  }, []);
+
+  const deleteMenuSection = useCallback((sectionId: string) => {
+    setConfig((c) => {
+      const nextSections = c.menuSections.filter((section) => section.id !== sectionId);
+      if (nextSections.length === 0) return c;
+      return {
+        ...c,
+        menuSections: nextSections,
+        menuItems: c.menuItems.filter((item) => item.sectionId !== sectionId),
+      };
+    });
+  }, []);
+
+  const renameMenuSection = useCallback((sectionId: string, title: string) => {
+    setConfig((c) => ({
+      ...c,
+      menuSections: c.menuSections.map((section) =>
+        section.id === sectionId ? { ...section, title } : section,
+      ),
+    }));
+  }, []);
+
+  const updateMarketingCopy = useCallback(
+    (field: "heroLead" | "customizationHook" | "menuBanner", value: string) => {
+      setConfig((c) => ({
+        ...c,
+        marketingCopy: {
+          ...c.marketingCopy,
+          [c.language]: {
+            ...c.marketingCopy[c.language],
+            [field]: value,
+          },
+        },
+      }));
+    },
+    [],
+  );
 
   const toggleOption = useCallback(
     (key: "sweetnessOptions" | "toppingOptions", value: string) => {
@@ -185,6 +386,9 @@ export default function App() {
           <span className="app__productSub" style={{ textAlign: "right" }}>
             Publish-ready pages in minutes
           </span>
+          <button type="button" className="app__btn app__btn--ghost" onClick={toggleLanguage}>
+            {config.language === "en" ? "EN / 繁" : "繁 / EN"}
+          </button>
         </div>
       </header>
 
@@ -192,7 +396,7 @@ export default function App() {
         <aside className="app__wizard">
           <div className="app__wizardInner">
             <div className="app__progress" role="tablist" aria-label="Steps">
-              {STEPS.map((label, i) => (
+              {copy.steps.map((label, i) => (
                 <button
                   key={label}
                   type="button"
@@ -212,32 +416,23 @@ export default function App() {
 
             {step === 0 && (
               <>
-                <h2 className="app__stepTitle">Launch a polished boba or tea site</h2>
-                <p className="app__stepHint">
-                  Answer a handful of prompts — BobaBiz AI assembles your front
-                  page, digital menu, and delivery story automatically. No code,
-                  no blank canvas.
-                </p>
+                <h2 className="app__stepTitle">{copy.launchTitle}</h2>
+                <p className="app__stepHint">{copy.launchBody}</p>
                 <ul className="app__welcomeList">
-                  <li>Front page tuned for first-time visitors and pickups</li>
-                  <li>Digital menu grouped by what you actually serve</li>
-                  <li>Pickup, local delivery, and shipping toggles with hours</li>
+                  {copy.launchBullets.map((bullet) => (
+                    <li key={bullet}>{bullet}</li>
+                  ))}
                 </ul>
-                <p className="app__stepHint">
-                  Start on the free testing plan to generate your preview; upgrade
-                  when you&apos;re ready to go live with hosting.
-                </p>
+                <p className="app__stepHint">{copy.launchFooter}</p>
               </>
             )}
 
             {step === 1 && (
               <>
-                <h2 className="app__stepTitle">Brand & story</h2>
+                <h2 className="app__stepTitle">{copy.brandStory}</h2>
                 <p className="app__stepHint">{headline}</p>
                 <div className="app__field">
-                  <label className="app__label" htmlFor="shop">
-                    Shop name
-                  </label>
+                  <label className="app__label" htmlFor="shop">{ui.shopName}</label>
                   <input
                     id="shop"
                     className="app__input"
@@ -250,9 +445,7 @@ export default function App() {
                   />
                 </div>
                 <div className="app__field">
-                  <label className="app__label" htmlFor="city">
-                    City or neighborhood
-                  </label>
+                  <label className="app__label" htmlFor="city">{ui.city}</label>
                   <input
                     id="city"
                     className="app__input"
@@ -264,7 +457,7 @@ export default function App() {
                   />
                 </div>
                 <div className="app__field">
-                  <span className="app__label">Site theme</span>
+                  <span className="app__label">{copy.siteTheme}</span>
                   <p className="app__paletteHint">
                     Like Kung Fu Tea: dark header, light or dark body, bold accent on headlines.
                   </p>
@@ -278,7 +471,7 @@ export default function App() {
                       }
                       onClick={() => setConfig({ ...config, themeMode: "light" })}
                     >
-                      Light
+                      {ui.light}
                     </button>
                     <button
                       type="button"
@@ -289,12 +482,12 @@ export default function App() {
                       }
                       onClick={() => setConfig({ ...config, themeMode: "dark" })}
                     >
-                      Dark
+                      {ui.dark}
                     </button>
                   </div>
                 </div>
                 <div className="app__field">
-                  <span className="app__label">Accent color</span>
+                  <span className="app__label">{copy.accentColor}</span>
                   <div className="app__accentGrid" role="listbox" aria-label="Accent color">
                     {ACCENT_OPTIONS.map((accent) => (
                       <button
@@ -317,14 +510,14 @@ export default function App() {
                     ))}
                   </div>
                   <p className="app__accentLabel">
-                    Selected:{" "}
+                    {ui.selected}{" "}
                     {ACCENT_OPTIONS.find((a) => a.id === config.accentColor)?.label ??
                       "Red"}
                   </p>
                 </div>
                 <div className="app__field">
                   <label className="app__label" htmlFor="tag">
-                    Hero headline
+                    {copy.heroHeadline}
                   </label>
                   <textarea
                     id="tag"
@@ -335,20 +528,52 @@ export default function App() {
                     }
                     placeholder="A short line guests see first"
                   />
+                  <button
+                    type="button"
+                    className="app__btn app__btn--ghost"
+                    onClick={() =>
+                      setConfig((c) => ({ ...c, tagline: generateHeroHeadline() }))
+                    }
+                  >
+                    {ui.aiGenerate}
+                  </button>
                 </div>
                 <div className="app__field">
                   <label className="app__label" htmlFor="promo">
-                    Top promo message
+                    {copy.topPromo}
                   </label>
                   <input
                     id="promo"
                     className="app__input"
-                    value={config.promoMessage}
+                    value={config.localizedPromoMessage[config.language]}
                     onChange={(e) =>
-                      setConfig({ ...config, promoMessage: e.target.value })
+                      setConfig({
+                        ...config,
+                        localizedPromoMessage: {
+                          ...config.localizedPromoMessage,
+                          [config.language]: e.target.value,
+                        },
+                        promoMessage:
+                          config.language === "en" ? e.target.value : config.promoMessage,
+                      })
                     }
                     placeholder="Offer text shown in the top bar"
                   />
+                  <button
+                    type="button"
+                    className="app__btn app__btn--ghost"
+                    onClick={() =>
+                      setConfig((c) => ({
+                        ...c,
+                        localizedPromoMessage: {
+                          ...c.localizedPromoMessage,
+                          [c.language]: generatePromoMessage(),
+                        },
+                      }))
+                    }
+                  >
+                    {ui.aiGenerate}
+                  </button>
                 </div>
                 <div className="app__aiRow">
                   <button
@@ -356,10 +581,10 @@ export default function App() {
                     className="app__btn app__btn--ghost"
                     onClick={applyTagline}
                   >
-                    Suggest headline
+                    {ui.suggestHeadline}
                   </button>
                   <p className="app__aiNote">
-                    Pulls from your shop name — refine freely.
+                  <p className="app__aiNote">{ui.suggestHint}</p>
                   </p>
                 </div>
               </>
@@ -367,9 +592,9 @@ export default function App() {
 
             {step === 2 && (
               <>
-                <h2 className="app__stepTitle">Front page layout</h2>
+                <h2 className="app__stepTitle">{copy.frontPageLayout}</h2>
                 <p className="app__stepHint">
-                  Pick the hero shape. Pick up tweaks on the right instantly.
+                  {ui.frontHint}
                 </p>
                 <div className="app__cards">
                   {HERO.map((h) => (
@@ -385,8 +610,8 @@ export default function App() {
                         setConfig({ ...config, heroStyle: h.id })
                       }
                     >
-                      <span className="app__pickTitle">{h.title}</span>
-                      <p className="app__pickDesc">{h.desc}</p>
+                      <span className="app__pickTitle">{h.id === "minimal" ? ui.heroA : h.id === "feature" ? ui.heroB : ui.heroC}</span>
+                      <p className="app__pickDesc">{h.id === "minimal" ? ui.heroADesc : h.id === "feature" ? ui.heroBDesc : ui.heroCDesc}</p>
                     </button>
                   ))}
                 </div>
@@ -395,9 +620,9 @@ export default function App() {
 
             {step === 3 && (
               <>
-                <h2 className="app__stepTitle">Digital menu starter</h2>
+                <h2 className="app__stepTitle">{copy.menuStarter}</h2>
                 <p className="app__stepHint">
-                  Swap curated sets now; replace items later in the editor.
+                  {ui.menuHint}
                 </p>
                 <div className="app__cards">
                   {MENUS.map((m) => {
@@ -419,8 +644,8 @@ export default function App() {
                           })
                         }
                       >
-                        <span className="app__pickTitle">{m.title}</span>
-                        <p className="app__pickDesc">{m.desc}</p>
+                        <span className="app__pickTitle">{ui.menuPresetTitle}</span>
+                        <p className="app__pickDesc">{ui.menuPresetDesc}</p>
                       </button>
                     );
                   })}
@@ -428,19 +653,18 @@ export default function App() {
                 <button
                   type="button"
                   className="app__btn app__btn--ghost"
-                  onClick={() => addMenuItem("signature")}
+                  onClick={addMenuSection}
                 >
-                  + Add menu item
+                  {ui.addMenuSection}
                 </button>
               </>
             )}
 
             {step === 4 && (
               <>
-                <h2 className="app__stepTitle">Pickup & delivery</h2>
+                <h2 className="app__stepTitle">{copy.pickupDelivery}</h2>
                 <p className="app__stepHint">
-                  Guests see only the options you enable. Hours stay visible in
-                  the order section.
+                  {ui.deliveryHint}
                 </p>
                 <div className="app__rows">
                   <label className="app__check">
@@ -454,7 +678,7 @@ export default function App() {
                         })
                       }
                     />
-                    Enable Online Delivery
+                    {copy.enableDelivery}
                   </label>
                   <label className="app__check">
                     <input
@@ -470,7 +694,7 @@ export default function App() {
                         })
                       }
                     />
-                    Counter & scheduled pickup
+                    {copy.counterPickup}
                   </label>
                   <label className="app__check">
                     <input
@@ -486,7 +710,7 @@ export default function App() {
                         })
                       }
                     />
-                    Local delivery
+                    {copy.localDelivery}
                   </label>
                   <label className="app__check">
                     <input
@@ -502,7 +726,7 @@ export default function App() {
                         })
                       }
                     />
-                    Bottle kits & pantry merch shipping
+                    {copy.shipping}
                   </label>
                 </div>
                 {!config.isDeliveryEnabled ? (
@@ -513,7 +737,7 @@ export default function App() {
                 {config.delivery.delivery ? (
                   <div className="app__field">
                     <label className="app__label" htmlFor="delnote">
-                      Delivery details
+                      {copy.deliveryDetails}
                     </label>
                     <textarea
                       id="delnote"
@@ -533,7 +757,7 @@ export default function App() {
                 ) : null}
                 <div className="app__field">
                   <label className="app__label" htmlFor="hours">
-                    Published hours
+                    {copy.publishedHours}
                   </label>
                   <input
                     id="hours"
@@ -551,7 +775,7 @@ export default function App() {
                   />
                 </div>
                 <div className="app__field">
-                  <span className="app__label">Sweetness presets</span>
+                  <span className="app__label">{copy.sweetnessPresets}</span>
                   <div className="app__chips">
                     {SWEETNESS_PRESETS.map((option) => (
                       <button
@@ -564,7 +788,7 @@ export default function App() {
                         }
                         onClick={() => toggleOption("sweetnessOptions", option)}
                       >
-                        {option}
+                        {localizedToppingLabel(config.language, option)}
                       </button>
                     ))}
                   </div>
@@ -573,7 +797,7 @@ export default function App() {
                       className="app__input"
                       value={customSweetness}
                       onChange={(e) => setCustomSweetness(e.target.value)}
-                      placeholder="Add custom sweetness option"
+                      placeholder="{ui.addSweetness}"
                     />
                     <button
                       type="button"
@@ -588,7 +812,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="app__field">
-                  <span className="app__label">Toppings presets</span>
+                  <span className="app__label">{copy.toppingsPresets}</span>
                   <div className="app__chips">
                     {TOPPING_PRESETS.map((option) => (
                       <button
@@ -601,7 +825,7 @@ export default function App() {
                         }
                         onClick={() => toggleOption("toppingOptions", option)}
                       >
-                        {option}
+                        {localizedToppingLabel(config.language, option)}
                       </button>
                     ))}
                   </div>
@@ -610,7 +834,7 @@ export default function App() {
                       className="app__input"
                       value={customTopping}
                       onChange={(e) => setCustomTopping(e.target.value)}
-                      placeholder="Add custom topping option"
+                      placeholder="{ui.addTopping}"
                     />
                     <button
                       type="button"
@@ -629,12 +853,12 @@ export default function App() {
 
             {step === 5 && (
               <>
-                <h2 className="app__stepTitle">Plans</h2>
-                <p className="app__stepHint">
-                  The testing plan unlocks full website generation in this
-                  builder. Paid tiers add hosted publishing with SSL, checkout
-                  add-ons, and priority support — pick what fits your stage.
-                </p>
+                <h2 className="app__stepTitle">{copy.plans}</h2>
+                <p className="app__stepHint">{ui.plansHint}</p>
+
+
+
+
                 <div className="app__priceGrid">
                   <button
                     type="button"
@@ -648,11 +872,12 @@ export default function App() {
                     }
                   >
                     <span className="app__pickTitle">
-                      Free · Testing plan
+                      {config.language === "zh-Hant" ? "\u514d\u8cbb - \u6e2c\u8a66\u65b9\u6848" : "Free - Testing plan"}
                     </span>
                     <p className="app__pickDesc">
-                      Generate your pages, tweak copy, and use the live preview.
-                      Ideal for mocks and staff reviews before you subscribe.
+                      {config.language === "zh-Hant"
+                        ? "\u751f\u6210\u9801\u9762\u3001\u8abf\u6574\u6587\u6848\u4e26\u4f7f\u7528\u5373\u6642\u9810\u89bd\uff0c\u9069\u5408\u5167\u90e8\u6f14\u793a\u8207\u6aa2\u8996\u3002"
+                        : "Generate your pages, tweak copy, and use the live preview. Ideal for mocks and staff reviews before you subscribe."}
                     </p>
                   </button>
                   <button
@@ -670,8 +895,8 @@ export default function App() {
                       ${monthlyPrice} / month
                     </span>
                     <p className="app__pickDesc">
-                      Hosted live site, SSL, menu editor — pause or migrate
-                      anytime.
+                      {config.language === "zh-Hant" ? "\u542b SSL \u8a17\u7ba1\u4e0a\u7dda\u3001\u83dc\u55ae\u7de8\u8f2f\uff0c\u96a8\u6642\u53ef\u66ab\u505c\u6216\u9077\u79fb\u3002" : "Hosted live site, SSL, menu editor - pause or migrate anytime."}
+
                     </p>
                   </button>
                   <button
@@ -689,23 +914,23 @@ export default function App() {
                       ${yearlyPrice} / year
                     </span>
                     <p className="app__pickDesc">
-                      About ${yearlyMonthlyEq}/mo billed annually — save vs monthly.
+                      {config.language === "zh-Hant" ? `\u7d04 $${yearlyMonthlyEq}/\u6708\uff08\u5e74\u7e73\uff09\uff0c\u6bd4\u6708\u7e73\u66f4\u7701\u3002` : `About $${yearlyMonthlyEq}/mo billed annually - save vs monthly.`}
                     </p>
                   </button>
                 </div>
                 <p className="app__aiNote">
-                  Selected:{" "}
+                  {ui.selected}{" "}
                   <strong>
                     {config.billing === "free"
-                      ? "Free testing plan"
+                      ? (config.language === "zh-Hant" ? "\u514d\u8cbb\u6e2c\u8a66\u65b9\u6848" : "Free testing plan")
                       : config.billing === "monthly"
-                        ? "Monthly billing"
-                        : "Yearly billing"}
+                        ? (config.language === "zh-Hant" ? "\u6708\u7e73" : "Monthly billing")
+                        : (config.language === "zh-Hant" ? "\u5e74\u7e73" : "Yearly billing")}
                   </strong>
                   .
                   {config.billing === "free"
-                    ? " You can refine every step anytime; upgrading only affects hosting when you publish."
-                    : " Pricing applies when you publish through BobaBiz AI — your preview is for layout and copy."}
+                    ? (config.language === "zh-Hant" ? " \u4f60\u53ef\u96a8\u6642\u8abf\u6574\u6240\u6709\u6b65\u9a5f\uff0c\u5347\u7d1a\u50c5\u5f71\u97ff\u4e0a\u7dda\u8a17\u7ba1\u3002" : " You can refine every step anytime; upgrading only affects hosting when you publish.")
+                    : (config.language === "zh-Hant" ? " \u767c\u4f48\u5230 BobaBiz AI \u624d\u6703\u5957\u7528\u8cbb\u7528\uff0c\u9810\u89bd\u968e\u6bb5\u50c5\u4f9b\u7248\u578b\u8207\u6587\u6848\u8abf\u6574\u3002" : " Pricing applies when you publish through BobaBiz AI - your preview is for layout and copy.")}
                 </p>
               </>
             )}
@@ -717,16 +942,16 @@ export default function App() {
                 onClick={goBack}
                 disabled={step === 0}
               >
-                Back
+                {copy.back}
               </button>
-              {step < STEPS.length - 1 ? (
+              {step < copy.steps.length - 1 ? (
                 <button
                   type="button"
                   className="app__btn app__btn--primary"
                   onClick={goNext}
                   disabled={!canNext}
                 >
-                  Continue
+                  {copy.continue}
                 </button>
               ) : (
                 <button
@@ -735,7 +960,7 @@ export default function App() {
                   onClick={publishSite}
                   disabled={config.shopName.trim().length < 2}
                 >
-                  Open your website
+                  {copy.openSite}
                 </button>
               )}
             </div>
@@ -746,11 +971,10 @@ export default function App() {
           <div className="app__publishBar">
             <div>
               <p className="app__previewTag" style={{ margin: 0 }}>
-                Live preview
+                {ui.livePreview}
               </p>
               <p className="app__publishHint">
-                Generate a real page you can open in a new tab or share. The
-                builder stays here; your shop site opens at{" "}
+                {ui.livePreviewHint}{" "}
                 <code className="app__code">site.html</code>.
               </p>
             </div>
@@ -761,7 +985,7 @@ export default function App() {
                 onClick={publishSite}
                 disabled={config.shopName.trim().length < 2}
               >
-                Open your website
+                {copy.openSite}
               </button>
               <button
                 type="button"
@@ -769,7 +993,7 @@ export default function App() {
                 onClick={() => void copySiteLink()}
                 disabled={config.shopName.trim().length < 2}
               >
-                {linkCopied ? "Link copied" : "Copy site link"}
+                {linkCopied ? ui.linkCopied : ui.copyLink}
               </button>
             </div>
           </div>
@@ -778,6 +1002,11 @@ export default function App() {
               config={config}
               onMenuItemUpdate={handleMenuItemUpdate}
               onAddMenuItem={addMenuItem}
+              onAddMenuSection={addMenuSection}
+              onDeleteMenuSection={deleteMenuSection}
+              onRenameMenuSection={renameMenuSection}
+              onLanguageToggle={toggleLanguage}
+              onMarketingCopyUpdate={updateMarketingCopy}
             />
           </div>
         </section>
@@ -785,3 +1014,9 @@ export default function App() {
     </div>
   );
 }
+
+
+
+
+
+

@@ -14,6 +14,18 @@ export type AccentColor =
   | "teal";
 
 export type HeroStyle = "minimal" | "feature" | "split";
+export type LanguageCode = "en" | "zh-Hant";
+
+export interface LocalizedMarketingContent {
+  heroLead: string;
+  customizationHook: string;
+  menuBanner: string;
+}
+
+export interface MarketingCopyByLanguage {
+  en: LocalizedMarketingContent;
+  "zh-Hant": LocalizedMarketingContent;
+}
 
 export interface ToppingOption {
   id: string;
@@ -32,8 +44,15 @@ export interface MenuItem {
   description: string;
   price: string;
   category: "signature" | "house" | "seasonal";
+  sectionId: string;
+  itemType: "drink" | "food";
   image?: string;
   customization?: MenuCustomization;
+}
+
+export interface MenuSection {
+  id: string;
+  title: string;
 }
 
 export interface OrderItemSelection {
@@ -66,10 +85,14 @@ export interface SiteConfig {
   shopName: string;
   tagline: string;
   promoMessage: string;
+  localizedPromoMessage: Record<LanguageCode, string>;
   city: string;
+  language: LanguageCode;
   themeMode: ThemeMode;
   accentColor: AccentColor;
   heroStyle: HeroStyle;
+  marketingCopy: MarketingCopyByLanguage;
+  menuSections: MenuSection[];
   menuItems: MenuItem[];
   isDeliveryEnabled: boolean;
   sweetnessOptions: string[];
