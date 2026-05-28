@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import type { DeliveryOrder, LanguageCode, MenuItem, SiteConfig, ToppingOption } from "./types";
 import { siteThemeStyle } from "./theme";
 import { EditableMenuItem } from "./EditableMenuItem";
@@ -56,6 +56,8 @@ function maskCvv(value: string): string {
   return value.replace(/\D/g, "").slice(0, 4);
 }
 
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "http://localhost:4000";
+
 const UI_COPY: Record<LanguageCode, Record<string, string>> = {
   en: {
     home: "Home",
@@ -100,8 +102,10 @@ const UI_COPY: Record<LanguageCode, Record<string, string>> = {
     email: "Email",
     message: "Message",
     send: "Send",
+    sending: "Sending...",
     ownerEmailMissing: "Owner email is not set yet.",
-    contactSent: "Your message is ready to send in your email app.",
+    contactSent: "Your message has been sent successfully.",
+    contactSendFailed: "We could not send your message right now. Please try again.",
   },
   "zh-Hant": {
     home: "\u9996\u9801",
@@ -146,8 +150,10 @@ const UI_COPY: Record<LanguageCode, Record<string, string>> = {
     email: "\u96fb\u5b50\u90f5\u4ef6",
     message: "\u7559\u8a00",
     send: "\u9001\u51fa",
+    sending: "\u50b3\u9001\u4e2d...",
     ownerEmailMissing: "\u5c1a\u672a\u8a2d\u5b9a\u5e97\u4e3b\u96fb\u5b50\u90f5\u4ef6\u3002",
-    contactSent: "\u5df2\u958b\u555f\u90f5\u4ef6\u7a0b\u5f0f\uff0c\u53ef\u4ee5\u76f4\u63a5\u9001\u51fa\u8a0a\u606f\u3002",
+    contactSent: "\u8a0a\u606f\u5df2\u6210\u529f\u9001\u51fa\u3002",
+    contactSendFailed: "\u76ee\u524d\u7121\u6cd5\u9001\u51fa\u8a0a\u606f\uff0c\u8acb\u7a0d\u5f8c\u518d\u8a66\u3002",
   },
 };
 
@@ -247,6 +253,7 @@ export function TeaShopPreview({
   const [contact, setContact] = useState<ContactForm>({ firstName: "", lastName: "", email: "", message: "" });
   const [contactStatus, setContactStatus] = useState("");
   const [contactError, setContactError] = useState("");
+  const [isContactSubmitting, setIsContactSubmitting] = useState(false);
 
   const grouped = config.menuSections.map((section) => ({ key: section.id, label: section.title, items: config.menuItems.filter((m) => m.sectionId === section.id) }));
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + lineTotal(item), 0), [cart]);
@@ -276,9 +283,13 @@ export function TeaShopPreview({
     setCart([]); setDeliveryAddress(""); setPayment({ cardholderName: "", cardNumber: "", expirationDate: "", cvv: "" });
   };
 
-  const sendContactMessage = () => {
+  const sendContactMessage = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (isContactSubmitting) return;
+
     setContactStatus("");
     setContactError("");
+
     const ownerEmail = config.ownerEmail.trim();
     if (!ownerEmail) {
       setContactError(ui.ownerEmailMissing);
@@ -288,13 +299,36 @@ export function TeaShopPreview({
       setContactError(lang === "zh-Hant" ? "\u8acb\u5b8c\u6574\u586b\u5beb\u6240\u6709\u6b04\u4f4d\u3002" : "Please fill out all fields.");
       return;
     }
-    const subject = encodeURIComponent(`${contact.firstName.trim()} ${contact.lastName.trim()} - ${shop} contact form`);
-    const body = encodeURIComponent(
-      `First name: ${contact.firstName.trim()}\nLast name: ${contact.lastName.trim()}\nEmail: ${contact.email.trim()}\n\nMessage:\n${contact.message.trim()}`,
-    );
-    window.location.href = `mailto:${ownerEmail}?subject=${subject}&body=${body}`;
-    setContactStatus(ui.contactSent);
-    setContact({ firstName: "", lastName: "", email: "", message: "" });
+
+    setIsContactSubmitting(true);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/contact`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: `${contact.firstName.trim()} ${contact.lastName.trim()}`,
+          email: contact.email.trim(),
+          message: contact.message.trim(),
+          ownerEmail,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setContactError(data?.error || ui.contactSendFailed);
+        return;
+      }
+
+      setContactStatus(ui.contactSent);
+      setContact({ firstName: "", lastName: "", email: "", message: "" });
+    } catch {
+      setContactError(ui.contactSendFailed);
+    } finally {
+      setIsContactSubmitting(false);
+    }
   };
 
   return (<div className={`tsp tsp--${config.themeMode}`} style={siteThemeStyle(config.themeMode, config.accentColor)}>
@@ -325,7 +359,7 @@ export function TeaShopPreview({
               {checkoutError ? <p className="tsp__error">{checkoutError}</p> : null}<button type="button" className="tsp__btn tsp__btn--primary" onClick={placeOrder}>{ui.placeOrder}</button>{placedOrder ? <p className="tsp__success">{ui.orderPlaced} {placedOrder.id} {ui.orderPlacedSuffix} {formatUsd(placedOrder.total)}.</p> : null}
             </div></div></section> : null}
 
-        <section id="contact" className="tsp__section tsp__section--alt"><div className="tsp__sectionHead"><h2 className="tsp__sectionTitle">{ui.contactTitle}</h2><p className="tsp__sectionSub">{ui.contactSub}</p></div><div className="tsp__contactWrap"><div className="tsp__card"><div className="tsp__row2"><div><label className="tsp__fieldLabel" htmlFor="contactFirst">{ui.firstName}</label><input id="contactFirst" className="tsp__input" value={contact.firstName} onChange={(e) => setContact((prev) => ({ ...prev, firstName: e.target.value }))} /></div><div><label className="tsp__fieldLabel" htmlFor="contactLast">{ui.lastName}</label><input id="contactLast" className="tsp__input" value={contact.lastName} onChange={(e) => setContact((prev) => ({ ...prev, lastName: e.target.value }))} /></div></div><label className="tsp__fieldLabel" htmlFor="contactEmail">{ui.email}</label><input id="contactEmail" type="email" className="tsp__input" value={contact.email} onChange={(e) => setContact((prev) => ({ ...prev, email: e.target.value }))} /><label className="tsp__fieldLabel" htmlFor="contactMessage">{ui.message}</label><textarea id="contactMessage" className="tsp__input tsp__textarea" value={contact.message} onChange={(e) => setContact((prev) => ({ ...prev, message: e.target.value }))} rows={5} />{contactError ? <p className="tsp__error">{contactError}</p> : null}{contactStatus ? <p className="tsp__success">{contactStatus}</p> : null}<button type="button" className="tsp__btn tsp__btn--primary" onClick={sendContactMessage}>{ui.send}</button></div></div></section>
+        <section id="contact" className="tsp__section tsp__section--alt"><div className="tsp__sectionHead"><h2 className="tsp__sectionTitle">{ui.contactTitle}</h2><p className="tsp__sectionSub">{ui.contactSub}</p></div><div className="tsp__contactWrap"><div className="tsp__card"><form onSubmit={sendContactMessage}><div className="tsp__row2"><div><label className="tsp__fieldLabel" htmlFor="contactFirst">{ui.firstName}</label><input id="contactFirst" className="tsp__input" value={contact.firstName} onChange={(e) => setContact((prev) => ({ ...prev, firstName: e.target.value }))} /></div><div><label className="tsp__fieldLabel" htmlFor="contactLast">{ui.lastName}</label><input id="contactLast" className="tsp__input" value={contact.lastName} onChange={(e) => setContact((prev) => ({ ...prev, lastName: e.target.value }))} /></div></div><label className="tsp__fieldLabel" htmlFor="contactEmail">{ui.email}</label><input id="contactEmail" type="email" className="tsp__input" value={contact.email} onChange={(e) => setContact((prev) => ({ ...prev, email: e.target.value }))} /><label className="tsp__fieldLabel" htmlFor="contactMessage">{ui.message}</label><textarea id="contactMessage" className="tsp__input tsp__textarea" value={contact.message} onChange={(e) => setContact((prev) => ({ ...prev, message: e.target.value }))} rows={5} />{contactError ? <p className="tsp__error">{contactError}</p> : null}{contactStatus ? <p className="tsp__success">{contactStatus}</p> : null}<button type="submit" className="tsp__btn tsp__btn--primary" disabled={isContactSubmitting}>{isContactSubmitting ? ui.sending : ui.send}</button></form></div></div></section>
       </main>
 
       {activeItem ? <div className="tsp__modalBackdrop" role="dialog" aria-modal="true"><div className="tsp__modal"><h3 className="tsp__cardTitle">{ui.customize} {tTerm(lang, activeItem.name)}</h3><p className="tsp__cardBody">{ui.basePrice}: {activeItem.price}</p>
