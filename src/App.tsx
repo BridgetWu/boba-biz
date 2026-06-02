@@ -14,7 +14,7 @@ import {
   saveSiteConfig,
 } from "./siteConfigStorage";
 import { TeaShopPreview } from "./TeaShopPreview";
-import type { HeroStyle, SiteConfig, MenuItem } from "./types";
+import type { HeroStyle, SiteConfig, MenuItem, SocialPlatform } from "./types";
 
 const BUILDER_COPY = {
   en: {
@@ -159,6 +159,13 @@ const UI_TEXT = {
     copyLink: "Copy site link",
     selected: "Selected:",
     ownerEmail: "Owner email",
+    socialLinks: "Social links",
+    socialHint: "Optional. Add the profiles you want shown on the live site.",
+    facebook: "Facebook",
+    instagram: "Instagram",
+    tiktok: "TikTok",
+    x: "X / Twitter",
+    youtube: "YouTube",
     shopIcon: "Shop icon",
     uploadIcon: "Upload icon",
     clearIcon: "Use default icon",
@@ -195,6 +202,13 @@ const UI_TEXT = {
     copyLink: "\u8907\u88fd\u7db2\u7ad9\u9023\u7d50",
     selected: "\u5df2\u9078\u64c7\uff1a",
     ownerEmail: "\u5e97\u4e3b\u96fb\u5b50\u90f5\u4ef6",
+    socialLinks: "\u793e\u7fa4\u9023\u7d50",
+    socialHint: "\u9078\u586b\u9805\u76ee\uff0c\u6703\u5728\u5be6\u969b\u7db2\u7ad9\u4e0a\u986f\u793a\u3002",
+    facebook: "Facebook",
+    instagram: "Instagram",
+    tiktok: "TikTok",
+    x: "X / Twitter",
+    youtube: "YouTube",
     shopIcon: "\u5e97\u5bb6\u5716\u793a",
     uploadIcon: "\u4e0a\u50b3\u5716\u793a",
     clearIcon: "\u4f7f\u7528\u9810\u8a2d\u5713\u5f62\u5716\u793a",
@@ -218,6 +232,13 @@ export default function App() {
   const [customTopping, setCustomTopping] = useState("");
   const copy = BUILDER_COPY[config.language];
   const ui = UI_TEXT[config.language];
+  const socialFields: { key: SocialPlatform; label: string; placeholder: string }[] = [
+    { key: "facebook", label: ui.facebook, placeholder: "https://facebook.com/yourpage" },
+    { key: "instagram", label: ui.instagram, placeholder: "https://instagram.com/yourhandle" },
+    { key: "tiktok", label: ui.tiktok, placeholder: "https://tiktok.com/@yourhandle" },
+    { key: "x", label: ui.x, placeholder: "https://x.com/yourhandle" },
+    { key: "youtube", label: ui.youtube, placeholder: "https://youtube.com/@yourchannel" },
+  ];
 
   const toggleLanguage = useCallback(() => {
     setConfig((c) => ({
@@ -491,6 +512,36 @@ export default function App() {
                     placeholder="owner@yourshop.com"
                     autoComplete="email"
                   />
+                </div>
+                <div className="app__field">
+                  <span className="app__label">{ui.socialLinks}</span>
+                  <p className="app__stepHint" style={{ marginTop: 0 }}>{ui.socialHint}</p>
+                  <div className="app__socialGrid">
+                    {socialFields.map((field) => (
+                      <div key={field.key} className="app__socialField">
+                        <label className="app__socialLabel" htmlFor={`social-${field.key}`}>
+                          {field.label}
+                        </label>
+                        <input
+                          id={`social-${field.key}`}
+                          className="app__input"
+                          type="url"
+                          inputMode="url"
+                          placeholder={field.placeholder}
+                          value={config.socialLinks?.[field.key] ?? ""}
+                          onChange={(e) =>
+                            setConfig((c) => ({
+                              ...c,
+                              socialLinks: {
+                                ...(c.socialLinks ?? {}),
+                                [field.key]: e.target.value.trim() || undefined,
+                              },
+                            }))
+                          }
+                        />
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="app__field">
                   <span className="app__label">{ui.shopIcon}</span>

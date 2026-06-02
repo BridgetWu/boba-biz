@@ -85,6 +85,7 @@ export interface SiteConfig {
   shopName: string;
   ownerEmail: string;
   shopIcon?: string;
+  socialLinks?: Partial<Record<SocialPlatform, string>>;
   tagline: string;
   promoMessage: string;
   localizedPromoMessage: Record<LanguageCode, string>;
@@ -108,3 +109,10 @@ export interface SiteConfig {
   };
   billing: BillingPlan;
 }
+
+export type SocialPlatform =
+  | "facebook"
+  | "instagram"
+  | "tiktok"
+  | "x"
+  | "youtube";

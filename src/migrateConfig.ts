@@ -4,6 +4,7 @@ import type {
   AccentColor,
   MarketingCopyByLanguage,
   SiteConfig,
+  SocialPlatform,
   ThemeMode,
   MenuItem,
   MenuSection,
@@ -42,11 +43,20 @@ const DEFAULT_MARKETING_COPY: MarketingCopyByLanguage = {
   },
 };
 
+const SOCIAL_PLATFORMS: SocialPlatform[] = [
+  "facebook",
+  "instagram",
+  "tiktok",
+  "x",
+  "youtube",
+];
+
 export function defaultSiteConfig(): SiteConfig {
   return {
     shopName: "",
     ownerEmail: "",
     shopIcon: undefined,
+    socialLinks: {},
     tagline: "",
     promoMessage: "Free pearl upgrade on your first online order this week",
     localizedPromoMessage: {
@@ -205,6 +215,14 @@ export function migrateSiteConfig(raw: unknown): SiteConfig {
     shopName: typeof r.shopName === "string" ? r.shopName : base.shopName,
     ownerEmail: typeof r.ownerEmail === "string" ? r.ownerEmail : base.ownerEmail,
     shopIcon: typeof r.shopIcon === "string" ? r.shopIcon : base.shopIcon,
+    socialLinks:
+      r.socialLinks && typeof r.socialLinks === "object"
+        ? SOCIAL_PLATFORMS.reduce((acc, platform) => {
+            const value = (r.socialLinks as Record<string, unknown>)[platform];
+            if (typeof value === "string" && value.trim()) acc[platform] = value.trim();
+            return acc;
+          }, {} as Partial<Record<SocialPlatform, string>>)
+        : base.socialLinks,
     tagline: typeof r.tagline === "string" ? r.tagline : base.tagline,
     promoMessage:
       typeof r.promoMessage === "string" ? r.promoMessage : base.promoMessage,

@@ -1,5 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
-import type { DeliveryOrder, LanguageCode, MenuItem, SiteConfig, ToppingOption } from "./types";
+import type { DeliveryOrder, LanguageCode, MenuItem, SiteConfig, SocialPlatform, ToppingOption } from "./types";
 import { siteThemeStyle } from "./theme";
 import { EditableMenuItem } from "./EditableMenuItem";
 
@@ -34,6 +34,32 @@ function parsePrice(price: string): number {
 
 function formatUsd(amount: number): string {
   return `$${amount.toFixed(2)}`;
+}
+
+const SOCIAL_ORDER: SocialPlatform[] = ["facebook", "instagram", "tiktok", "x", "youtube"];
+
+function normalizeSocialUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  return `https://${url}`;
+}
+
+function socialIcon(platform: SocialPlatform) {
+  switch (platform) {
+    case "facebook":
+      return <path d="M13.5 8.5h2.1V6h-2.1c-1.9 0-3.3 1.5-3.3 3.4v1.6H8v2.6h2.2V22h2.9v-8.4h2.4L15.8 11h-2.7V9.8c0-.8.4-1.3 1.2-1.3Z" />;
+    case "instagram":
+      return <>
+        <rect x="5" y="5" width="14" height="14" rx="4" />
+        <circle cx="12" cy="12" r="3.2" />
+        <circle cx="16.8" cy="7.2" r="1" fill="currentColor" stroke="none" />
+      </>;
+    case "tiktok":
+      return <path d="M14 5v8.4a3.5 3.5 0 1 1-2.7-3.4V7.6a6 6 0 1 0 4.6 5.8V9.6c1 .9 2.2 1.4 3.5 1.5V8.4c-1.4-.1-2.7-.7-3.7-1.8A5.8 5.8 0 0 1 14 5Z" />;
+    case "x":
+      return <path d="M6 6h3l3.5 4.6L16.6 6H22l-5.9 6.6L22 22h-3l-4.1-5.4L10 22H5l6.2-6.9L6 6Zm2.4 1.7L16.2 20H18L10.2 7.7H8.4Z" />;
+    case "youtube":
+      return <path d="M21.6 8.2a2.5 2.5 0 0 0-1.8-1.8C18.2 6 12 6 12 6s-6.2 0-7.8.4a2.5 2.5 0 0 0-1.8 1.8A26 26 0 0 0 2 12a26 26 0 0 0 .4 3.8 2.5 2.5 0 0 0 1.8 1.8C5.8 18 12 18 12 18s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8A26 26 0 0 0 22 12a26 26 0 0 0-.4-3.8ZM10 15.2V8.8L15.6 12 10 15.2Z" />;
+  }
 }
 
 function lineTotal(item: CartItem): number {
@@ -256,6 +282,10 @@ export function TeaShopPreview({
   const [isContactSubmitting, setIsContactSubmitting] = useState(false);
 
   const grouped = config.menuSections.map((section) => ({ key: section.id, label: section.title, items: config.menuItems.filter((m) => m.sectionId === section.id) }));
+  const socialLinks = SOCIAL_ORDER.flatMap((platform) => {
+    const url = config.socialLinks?.[platform]?.trim();
+    return url ? [{ platform, url: normalizeSocialUrl(url) }] : [];
+  });
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + lineTotal(item), 0), [cart]);
   const deliveryFee = subtotal === 0 ? 0 : subtotal >= 25 ? 0 : 3.99;
   const total = subtotal + deliveryFee;
@@ -362,6 +392,31 @@ export function TeaShopPreview({
         <section id="contact" className="tsp__section tsp__section--alt"><div className="tsp__sectionHead"><h2 className="tsp__sectionTitle">{ui.contactTitle}</h2><p className="tsp__sectionSub">{ui.contactSub}</p></div><div className="tsp__contactWrap"><div className="tsp__card"><form onSubmit={sendContactMessage}><div className="tsp__row2"><div><label className="tsp__fieldLabel" htmlFor="contactFirst">{ui.firstName}</label><input id="contactFirst" className="tsp__input" value={contact.firstName} onChange={(e) => setContact((prev) => ({ ...prev, firstName: e.target.value }))} /></div><div><label className="tsp__fieldLabel" htmlFor="contactLast">{ui.lastName}</label><input id="contactLast" className="tsp__input" value={contact.lastName} onChange={(e) => setContact((prev) => ({ ...prev, lastName: e.target.value }))} /></div></div><label className="tsp__fieldLabel" htmlFor="contactEmail">{ui.email}</label><input id="contactEmail" type="email" className="tsp__input" value={contact.email} onChange={(e) => setContact((prev) => ({ ...prev, email: e.target.value }))} /><label className="tsp__fieldLabel" htmlFor="contactMessage">{ui.message}</label><textarea id="contactMessage" className="tsp__input tsp__textarea" value={contact.message} onChange={(e) => setContact((prev) => ({ ...prev, message: e.target.value }))} rows={5} />{contactError ? <p className="tsp__error">{contactError}</p> : null}{contactStatus ? <p className="tsp__success">{contactStatus}</p> : null}<button type="submit" className="tsp__btn tsp__btn--primary" disabled={isContactSubmitting}>{isContactSubmitting ? ui.sending : ui.send}</button></form></div></div></section>
       </main>
 
+      {socialLinks.length > 0 ? (
+        <footer className="tsp__footer">
+          <div className="tsp__footerInner">
+            <span className="tsp__footerLabel">Follow us</span>
+            <div className="tsp__socialRow" aria-label="Social links">
+              {socialLinks.map(({ platform, url }) => (
+                <a
+                  key={platform}
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="tsp__socialLink"
+                  aria-label={platform}
+                  title={platform}
+                >
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    {socialIcon(platform)}
+                  </svg>
+                </a>
+              ))}
+            </div>
+          </div>
+        </footer>
+      ) : null}
+
       {activeItem ? <div className="tsp__modalBackdrop" role="dialog" aria-modal="true"><div className="tsp__modal"><h3 className="tsp__cardTitle">{ui.customize} {tTerm(lang, activeItem.name)}</h3><p className="tsp__cardBody">{ui.basePrice}: {activeItem.price}</p>
         {activeItem.itemType !== "food" ? <><div><p className="tsp__fieldLabel">{ui.sweetnessLevel}</p><div className="tsp__chips">{activeSweetnessOptions.map((option) => <button key={option} type="button" className={selectedSweetness === option ? "tsp__chip tsp__chip--on" : "tsp__chip"} onClick={() => setSelectedSweetness(option)}>{tTerm(lang, option)}</button>)}</div></div><div><p className="tsp__fieldLabel">{ui.toppings}</p><div className="tsp__toppingList">{activeToppingOptions.map((option) => { const checked = selectedToppings.some((t) => t.id === option.id); return <label key={option.id} className="tsp__checkRow"><input type="checkbox" checked={checked} onChange={(e) => setSelectedToppings((prev) => e.target.checked ? [...prev, option] : prev.filter((t) => t.id !== option.id))} /><span>{tTerm(lang, option.name)} {option.priceDelta ? `(+${formatUsd(option.priceDelta)})` : ""}</span></label>; })}</div></div></> : <p className="tsp__cardBody">{ui.nonDrinkMessage}</p>}
         <div className="tsp__ctaRow"><button type="button" className="tsp__btn tsp__btn--ghost" onClick={() => setActiveItem(null)}>{ui.cancel}</button><button type="button" className="tsp__btn tsp__btn--primary" onClick={addToCart}>{ui.addToOrder}</button></div>
@@ -424,7 +479,16 @@ export function TeaShopPreview({
         .tsp__input { width: 100%; font: inherit; border: 1px solid var(--tsp-border); border-radius: .55rem; padding: .55rem .65rem; background: var(--tsp-surface); color: var(--tsp-deep); }
         .tsp__row2 { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
         .tsp__textarea { resize: vertical; min-height: 7rem; }
-        .tsp__contactWrap { max-width: 42rem; }
+        .tsp__contactWrap { max-width: 42rem; margin: 0 auto; }
+        .tsp__contactWrap form { text-align: left; }
+        .tsp__section#contact .tsp__sectionHead { margin-left: auto; margin-right: auto; text-align: center; }
+        .tsp__footer { padding: 1.25rem; border-top: 1px solid var(--tsp-border); background: var(--tsp-section-alt); }
+        .tsp__footerInner { display: flex; align-items: center; justify-content: center; gap: .9rem; flex-wrap: wrap; }
+        .tsp__footerLabel { font-size: .78rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--tsp-muted); }
+        .tsp__socialRow { display: flex; gap: .6rem; flex-wrap: wrap; }
+        .tsp__socialLink { width: 3rem; height: 3rem; border-radius: 999px; display: inline-grid; place-items: center; border: 1px solid var(--tsp-border); color: var(--tsp-accent); background: var(--tsp-surface); }
+        .tsp__socialLink:hover { transform: translateY(-1px); border-color: var(--tsp-accent); }
+        .tsp__socialLink svg { width: 1.45rem; height: 1.45rem; fill: currentColor; stroke: currentColor; stroke-width: 1.8; }
         .tsp__error { color: #b42318; font-weight: 600; margin: .75rem 0; }
         .tsp__success { color: #047857; font-weight: 600; margin: .75rem 0 0; }
         .tsp__modalBackdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, .45); display: grid; place-items: center; padding: 1rem; z-index: 20; }
