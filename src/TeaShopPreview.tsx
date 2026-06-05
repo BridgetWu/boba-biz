@@ -459,6 +459,19 @@ export function TeaShopPreview({
         .tsp__menuOrderBtn:hover { border-color: var(--tsp-accent); }
         .tsp__menuPublicImage { width: 100%; aspect-ratio: 4 / 3; height: auto; object-fit: contain; border-radius: .5rem; margin-bottom: .7rem; border: 1px solid var(--tsp-border); background: var(--tsp-surface); }
         .tsp__menuPublicImage--placeholder { display: grid; place-items: center; color: var(--tsp-muted); font-size: .8rem; background: var(--tsp-accent-soft); }
+        .tsp__menuImageContainer { margin-bottom: .7rem; }
+        .tsp__menuImageWrapper { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: .5rem; overflow: hidden; border: 1px solid var(--tsp-border); background: var(--tsp-surface); }
+        .tsp__menuImage { display: block; width: 100%; height: 100%; object-fit: cover; cursor: pointer; }
+        .tsp__menuImagePlaceholder { width: 100%; height: 100%; min-height: 140px; display: grid; place-items: center; gap: .35rem; border: 1px dashed var(--tsp-border); border-radius: .5rem; background: var(--tsp-accent-soft); color: var(--tsp-muted); cursor: pointer; font: inherit; padding: 0.75rem; text-align: center; }
+        .tsp__menuImagePlaceholder:hover, .tsp__menuImageWrapper:hover { border-color: var(--tsp-accent); }
+        .tsp__menuImageIcon { width: 2rem; height: 2rem; border-radius: 999px; display: grid; place-items: center; background: var(--tsp-surface); color: var(--tsp-accent); font-weight: 700; font-size: 1.1rem; }
+        .tsp__menuImageText { font-size: .82rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+        .tsp__menuImageRemove { position: absolute; top: .45rem; right: .45rem; width: 1.7rem; height: 1.7rem; border-radius: 999px; border: 1px solid var(--tsp-border); background: rgba(255, 255, 255, .95); color: var(--tsp-deep); font: inherit; font-weight: 700; cursor: pointer; line-height: 1; }
+        .tsp__menuImageRemove:hover { border-color: var(--tsp-accent); color: var(--tsp-accent); }
+        .tsp__menuImageInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+        .tsp__menuNameInput, .tsp__menuPriceInput, .tsp__menuDescInput { width: 100%; font: inherit; border: 1px solid var(--tsp-border); border-radius: .45rem; padding: .35rem .5rem; background: var(--tsp-surface); color: var(--tsp-deep); }
+        .tsp__menuNameInput, .tsp__menuPriceInput { font-weight: 600; }
+        .tsp__menuDescInput { resize: vertical; min-height: 5rem; margin-top: .25rem; }
         .tsp__menuAddLabel { margin-top: .6rem; display: inline-block; color: var(--tsp-accent); font-weight: 700; font-size: .8rem; text-transform: uppercase; }
         .tsp__menuAddBtn { margin-top: 1rem; font: inherit; border-radius: 999px; border: 1px solid var(--tsp-accent); background: var(--tsp-accent-soft); color: var(--tsp-accent); padding: .5rem .9rem; font-weight: 700; cursor: pointer; }
         .tsp__menuAddBtn--small { margin-top: 0; padding: .35rem .7rem; font-size: .75rem; }
