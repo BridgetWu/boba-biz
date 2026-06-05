@@ -13,6 +13,7 @@ import {
   getPublishedSiteUrl,
   saveSiteConfig,
 } from "./siteConfigStorage";
+import { publishSiteToSupabase } from "./supabasePublish";
 import { TeaShopPreview } from "./TeaShopPreview";
 import type { HeroStyle, SiteConfig, MenuItem, SocialPlatform } from "./types";
 
@@ -228,6 +229,9 @@ export default function App() {
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState<SiteConfig>(defaultSiteConfig);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [publishedLink, setPublishedLink] = useState("");
+  const [publishError, setPublishError] = useState("");
+  const [isPublishing, setIsPublishing] = useState(false);
   const [customSweetness, setCustomSweetness] = useState("");
   const [customTopping, setCustomTopping] = useState("");
   const copy = BUILDER_COPY[config.language];
@@ -277,9 +281,18 @@ export default function App() {
 
   const goBack = () => setStep((s) => Math.max(0, s - 1));
 
-  const publishSite = useCallback(() => {
+  const publishSite = useCallback(async () => {
     saveSiteConfig(config);
-    window.location.assign(getPublishedSiteUrl(config));
+    setPublishError("");
+    setIsPublishing(true);
+    try {
+      const liveUrl = await publishSiteToSupabase(config);
+      setPublishedLink(liveUrl);
+    } catch (error) {
+      setPublishError(error instanceof Error ? error.message : "Publish failed.");
+    } finally {
+      setIsPublishing(false);
+    }
   }, [config]);
 
   const copySiteLink = useCallback(async () => {
@@ -1034,6 +1047,15 @@ export default function App() {
                     ? (config.language === "zh-Hant" ? " \u4f60\u53ef\u96a8\u6642\u8abf\u6574\u6240\u6709\u6b65\u9a5f\uff0c\u5347\u7d1a\u50c5\u5f71\u97ff\u4e0a\u7dda\u8a17\u7ba1\u3002" : " You can refine every step anytime; upgrading only affects hosting when you publish.")
                     : (config.language === "zh-Hant" ? " \u767c\u4f48\u5230 BobaBiz AI \u624d\u6703\u5957\u7528\u8cbb\u7528\uff0c\u9810\u89bd\u968e\u6bb5\u50c5\u4f9b\u7248\u578b\u8207\u6587\u6848\u8abf\u6574\u3002" : " Pricing applies when you publish through BobaBiz AI - your preview is for layout and copy.")}
                 </p>
+                {publishError ? <p className="app__error">{publishError}</p> : null}
+                {publishedLink ? (
+                  <div className="app__publishedLink">
+                    <span className="app__label">Live link</span>
+                    <a href={publishedLink} target="_blank" rel="noreferrer">
+                      {publishedLink}
+                    </a>
+                  </div>
+                ) : null}
               </>
             )}
 
@@ -1060,9 +1082,9 @@ export default function App() {
                   type="button"
                   className="app__btn app__btn--primary"
                   onClick={publishSite}
-                  disabled={config.shopName.trim().length < 2}
+                  disabled={config.shopName.trim().length < 2 || isPublishing}
                 >
-                  {copy.openSite}
+                  {isPublishing ? "Publishing..." : "Publish"}
                 </button>
               )}
             </div>
@@ -1085,9 +1107,9 @@ export default function App() {
                 type="button"
                 className="app__btn app__btn--primary"
                 onClick={publishSite}
-                disabled={config.shopName.trim().length < 2}
+                disabled={config.shopName.trim().length < 2 || isPublishing}
               >
-                {copy.openSite}
+                {isPublishing ? "Publishing..." : "Publish"}
               </button>
               <button
                 type="button"
