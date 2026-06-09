@@ -405,8 +405,8 @@ export default function App() {
     [],
   );
 
-  const monthlyPrice = 29;
-  const yearlyPrice = 249;
+  const monthlyPrice = 10;
+  const yearlyPrice = 105;
   const yearlyMonthlyEq = Math.round(yearlyPrice / 12);
 
   const handleShopIconUpload = useCallback(
