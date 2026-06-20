@@ -1,7 +1,35 @@
 .app {
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  position: relative;
+  background: transparent;
+}
+
+.app__modeToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--input-bg);
+  padding: 0.45rem 0.85rem;
+  cursor: pointer;
+}
+
+.app__modeToggleLabel {
+  font-family: "Fraunces", Georgia, serif;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.app__modeToggleHint {
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.app__modeToggle--inline {
+  white-space: nowrap;
 }
 
 .app__bar {
@@ -17,6 +45,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+}
+
+.app__barActions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .app__product {
@@ -52,18 +88,33 @@
 
 .app__layout {
   flex: 1;
-  display: grid;
-  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
-  gap: 0;
-  max-width: 1180px;
+  display: block;
+  position: relative;
+  max-width: 1280px;
   margin: 0 auto;
   width: 100%;
 }
 
-@media (max-width: 960px) {
-  .app__layout {
-    grid-template-columns: 1fr;
-  }
+.app__siteShell {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+}
+
+.app__siteModeBar {
+  position: fixed;
+  top: 0.85rem;
+  right: 0.85rem;
+  z-index: 50;
+  pointer-events: none;
+  display: flex;
+  justify-content: flex-end;
+  width: calc(100% - 1.7rem);
+}
+
+.app__siteModeBar .app__modeToggle {
+  pointer-events: auto;
 }
 
 .app__wizard {
@@ -73,6 +124,21 @@
   display: flex;
   flex-direction: column;
   min-height: 60vh;
+}
+
+.app__wizard--floating {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.18);
+  overflow: auto;
+  z-index: 40;
+  background: color-mix(in srgb, var(--surface) 94%, transparent);
+  backdrop-filter: blur(12px);
 }
 
 .app__wizard .app__stepTitle {
@@ -294,12 +360,33 @@
   overflow: auto;
 }
 
+.app__preview--full {
+  min-height: calc(100vh - 4.75rem);
+  padding-left: 1rem;
+}
+
 .app__previewFrame {
   border: 1px solid var(--line);
   border-radius: 0.75rem;
   overflow: hidden;
   background: #fff;
   min-height: 520px;
+}
+
+.app__customerNotice {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 0.9rem;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1rem;
+  color: var(--muted);
+}
+
+.app__customerNotice strong {
+  color: var(--ink);
 }
 
 .app__previewTag {
@@ -334,6 +421,20 @@
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+}
+
+.app__sectionLabel {
+  margin: 0.6rem 0 0.15rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.app__panelTitleRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
 .app__paletteHint {
@@ -392,28 +493,6 @@
   margin: 0.45rem 0 0;
   font-size: 0.82rem;
   color: var(--sidebar-muted, var(--muted));
-}
-
-.app__publishBar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.app__publishHint {
-  margin: 0.2rem 0 0;
-  font-size: 0.82rem;
-  color: var(--muted);
-  max-width: 22rem;
-}
-
-.app__publishActions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
 }
 
 .app__code {
