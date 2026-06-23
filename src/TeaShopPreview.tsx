@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import type { DeliveryOrder, LanguageCode, MenuItem, SiteConfig, SocialPlatform, ToppingOption } from "./types";
 import { siteThemeStyle } from "./theme";
 import { EditableMenuItem } from "./EditableMenuItem";
+import { WebsiteChatWidget } from "./WebsiteChatWidget";
 
 interface CartItem {
   id: string;
@@ -417,6 +418,8 @@ export function TeaShopPreview({
         </footer>
       ) : null}
 
+      <WebsiteChatWidget config={config} />
+
       {activeItem ? <div className="tsp__modalBackdrop" role="dialog" aria-modal="true"><div className="tsp__modal"><h3 className="tsp__cardTitle">{ui.customize} {tTerm(lang, activeItem.name)}</h3><p className="tsp__cardBody">{ui.basePrice}: {activeItem.price}</p>
         {activeItem.itemType !== "food" ? <><div><p className="tsp__fieldLabel">{ui.sweetnessLevel}</p><div className="tsp__chips">{activeSweetnessOptions.map((option) => <button key={option} type="button" className={selectedSweetness === option ? "tsp__chip tsp__chip--on" : "tsp__chip"} onClick={() => setSelectedSweetness(option)}>{tTerm(lang, option)}</button>)}</div></div><div><p className="tsp__fieldLabel">{ui.toppings}</p><div className="tsp__toppingList">{activeToppingOptions.map((option) => { const checked = selectedToppings.some((t) => t.id === option.id); return <label key={option.id} className="tsp__checkRow"><input type="checkbox" checked={checked} onChange={(e) => setSelectedToppings((prev) => e.target.checked ? [...prev, option] : prev.filter((t) => t.id !== option.id))} /><span>{tTerm(lang, option.name)} {option.priceDelta ? `(+${formatUsd(option.priceDelta)})` : ""}</span></label>; })}</div></div></> : <p className="tsp__cardBody">{ui.nonDrinkMessage}</p>}
         <div className="tsp__ctaRow"><button type="button" className="tsp__btn tsp__btn--ghost" onClick={() => setActiveItem(null)}>{ui.cancel}</button><button type="button" className="tsp__btn tsp__btn--primary" onClick={addToCart}>{ui.addToOrder}</button></div>
@@ -514,6 +517,42 @@ export function TeaShopPreview({
         .tsp__editable { cursor: text; border-bottom: 1px dashed transparent; }
         .tsp__editable:hover { border-bottom-color: var(--tsp-accent); }
         .tsp__inlineEditor { width: 100%; font: inherit; border: 1px solid var(--tsp-accent); border-radius: .45rem; background: var(--tsp-surface); color: var(--tsp-deep); padding: .35rem .5rem; }
+        .chat-widget { position: fixed; right: 1rem; bottom: 1rem; z-index: 60; display: flex; flex-direction: column; align-items: flex-end; gap: .75rem; }
+        .chat-widget__launcher { display: inline-flex; align-items: center; gap: .6rem; border: 1px solid var(--tsp-accent); background: var(--tsp-accent); color: #fffdf8; border-radius: 999px; padding: .75rem 1rem; font: inherit; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; box-shadow: 0 16px 40px rgba(0, 0, 0, .18); cursor: pointer; }
+        .chat-widget__launcherIcon { width: 1.75rem; height: 1.75rem; border-radius: 999px; display: grid; place-items: center; background: rgba(255, 255, 255, .16); font-size: .75rem; }
+        .chat-widget__panel { width: min(24rem, calc(100vw - 2rem)); max-height: min(34rem, calc(100vh - 6rem)); display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--tsp-border); border-radius: 1rem; background: color-mix(in srgb, var(--tsp-surface) 96%, transparent); box-shadow: 0 24px 60px rgba(0, 0, 0, .22); backdrop-filter: blur(14px); }
+        .chat-widget__header { padding: .9rem 1rem; display: flex; align-items: start; justify-content: space-between; gap: 1rem; border-bottom: 1px solid var(--tsp-border); background: color-mix(in srgb, var(--tsp-page-bg) 80%, white); }
+        .chat-widget__eyebrow { margin: 0 0 .1rem; text-transform: uppercase; letter-spacing: .1em; font-size: .68rem; color: var(--tsp-muted); font-weight: 700; }
+        .chat-widget__title { margin: 0; font-family: "Fraunces", Georgia, serif; font-size: 1.05rem; color: var(--tsp-accent); }
+        .chat-widget__headerActions { display: flex; align-items: center; gap: .4rem; }
+        .chat-widget__textButton, .chat-widget__iconButton, .chat-widget__send { font: inherit; }
+        .chat-widget__textButton, .chat-widget__iconButton { border: 1px solid var(--tsp-border); background: var(--tsp-surface); color: var(--tsp-deep); border-radius: 999px; cursor: pointer; }
+        .chat-widget__textButton { padding: .4rem .7rem; font-size: .8rem; font-weight: 700; }
+        .chat-widget__iconButton { width: 2rem; height: 2rem; display: grid; place-items: center; font-size: 1.1rem; line-height: 1; }
+        .chat-widget__messages { padding: .9rem 1rem; overflow: auto; display: grid; gap: .6rem; flex: 1; }
+        .chat-widget__message { display: flex; }
+        .chat-widget__message--user { justify-content: flex-end; }
+        .chat-widget__message--assistant { justify-content: flex-start; }
+        .chat-widget__bubble { max-width: 85%; padding: .68rem .8rem; border-radius: 1rem; white-space: pre-wrap; line-height: 1.45; }
+        .chat-widget__message--user .chat-widget__bubble { background: var(--tsp-accent); color: #fffdf8; border-bottom-right-radius: .35rem; }
+        .chat-widget__message--assistant .chat-widget__bubble { background: var(--tsp-accent-soft); color: var(--tsp-deep); border-bottom-left-radius: .35rem; }
+        .chat-widget__typing { display: inline-flex; gap: .3rem; padding: .2rem .2rem .5rem; }
+        .chat-widget__typing span { width: .45rem; height: .45rem; border-radius: 999px; background: var(--tsp-accent); opacity: .55; animation: chatPulse 1.1s infinite ease-in-out; }
+        .chat-widget__typing span:nth-child(2) { animation-delay: .15s; }
+        .chat-widget__typing span:nth-child(3) { animation-delay: .3s; }
+        .chat-widget__composer { padding: .9rem 1rem 1rem; border-top: 1px solid var(--tsp-border); background: color-mix(in srgb, var(--tsp-page-bg) 84%, white); display: grid; gap: .55rem; }
+        .chat-widget__input { width: 100%; min-height: 4.5rem; resize: vertical; border: 1px solid var(--tsp-border); border-radius: .8rem; padding: .7rem .8rem; font: inherit; color: var(--tsp-deep); background: var(--tsp-surface); }
+        .chat-widget__input:focus { outline: 2px solid var(--tsp-accent); outline-offset: 1px; }
+        .chat-widget__send { justify-self: end; border: 1px solid var(--tsp-accent); background: var(--tsp-accent); color: #fffdf8; border-radius: 999px; padding: .55rem .95rem; font-weight: 800; cursor: pointer; }
+        .chat-widget__send:disabled { opacity: .6; cursor: not-allowed; }
+        .chat-widget__error { margin: 0; color: #b42318; font-size: .88rem; }
+        @keyframes chatPulse { 0%, 80%, 100% { transform: translateY(0); opacity: .4; } 40% { transform: translateY(-2px); opacity: 1; } }
+        @media (max-width: 640px) {
+          .chat-widget { right: .75rem; bottom: .75rem; left: .75rem; align-items: stretch; }
+          .chat-widget__panel { width: 100%; max-height: min(70vh, 34rem); }
+          .chat-widget__launcher { align-self: flex-end; }
+        }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
       `}</style>
     </div>);
 }

@@ -1,7 +1,5 @@
-import { config as loadEnv } from "dotenv";
-import cors from "cors";
-import express from "express";
-import { Resend } from "resend";
+import http from "node:http";
+import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -15,64 +13,225 @@ const envCandidates = [
   path.join(currentDir, "..", ".env"),
 ];
 
-for (const envPath of envCandidates) {
-  loadEnv({ path: envPath, override: false });
+function loadEnvFile(envPath) {
+  if (!existsSync(envPath)) return;
+  const contents = readFileSync(envPath, "utf8");
+  for (const line of contents.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const equalsIndex = trimmed.indexOf("=");
+    if (equalsIndex === -1) continue;
+    const key = trimmed.slice(0, equalsIndex).trim();
+    if (!key || process.env[key]) continue;
+    let value = trimmed.slice(equalsIndex + 1).trim();
+    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
 }
 
-const app = express();
+for (const envPath of envCandidates) {
+  loadEnvFile(envPath);
+}
+
 const port = Number(process.env.PORT || 4000);
 const clientOrigin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
-const resendApiKey = process.env.RESEND_API_KEY;
+const geminiApiKey = process.env.GEMINI_API_KEY;
+const geminiModel = "gemini-3.5-flash";
 
-// Allow the Vite frontend to call this API in development/production.
-app.use(cors({ origin: clientOrigin }));
-// Parse JSON request bodies for API routes.
-app.use(express.json());
+function sendJson(res, statusCode, payload) {
+  res.writeHead(statusCode, {
+    "Content-Type": "application/json; charset=utf-8",
+    "Access-Control-Allow-Origin": clientOrigin,
+    "Access-Control-Allow-Headers": "Content-Type",
+  });
+  res.end(JSON.stringify(payload));
+}
 
-app.post("/api/contact", async (req, res) => {
-  try {
-    const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
-    const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
-    const message = typeof req.body?.message === "string" ? req.body.message.trim() : "";
-    const ownerEmail = typeof req.body?.ownerEmail === "string" ? req.body.ownerEmail.trim() : "";
+function normalizeMessages(messages) {
+  if (!Array.isArray(messages)) return [];
+  return messages
+    .filter((message) => message && typeof message.content === "string")
+    .map((message) => ({
+      role: message.role === "assistant" ? "model" : "user",
+      parts: [{ text: message.content.trim() }],
+    }))
+    .filter((message) => message.parts[0].text.length > 0);
+}
 
-    if (!name || !email || !message || !ownerEmail) {
-      return res.status(400).json({ error: "Missing required fields: name, email, message, ownerEmail." });
-    }
+function getAssistantPrompt() {
+  return [
+    "You are a helpful AI assistant for this website.",
+    "Answer questions about the website and guide users through available features. If the question is unrelated to the shop, reply with 'I’m sorry, I cannot answer the question.'",
+    "Customer question:",
+  ].join(" ");
+}
 
-    if (!resendApiKey) {
-      return res.status(500).json({ error: "Email service is not configured." });
-    }
+function extractTextFromGeminiPayload(payload) {
+  if (!payload || typeof payload !== "object") return "";
 
-    const resend = new Resend(resendApiKey);
-    const sendResult = await resend.emails.send({
-      from: process.env.RESEND_FROM_EMAIL || "Tea Shop Contact <onboarding@resend.dev>",
-      to: ownerEmail,
-      replyTo: email,
-      subject: `New contact form message from ${name}`,
-      text: [
-        `Name: ${name}`,
-        `Email: ${email}`,
-        "",
-        "Message:",
-        message,
-      ].join("\n"),
-    });
-
-    if (sendResult.error) {
-      console.error("Resend send error:", sendResult.error);
-      return res.status(502).json({
-        error: sendResult.error.message || "Failed to send email.",
-      });
-    }
-
-    return res.status(200).json({ success: true, messageId: sendResult.data?.id ?? null });
-  } catch (error) {
-    console.error("Contact API error:", error);
-    return res.status(500).json({ error: "Internal server error." });
+  if (typeof payload.text === "string") {
+    return payload.text;
   }
+
+  const candidateTexts =
+    payload.candidates?.flatMap((candidate) => {
+      const parts = candidate?.content?.parts;
+      if (!Array.isArray(parts)) return [];
+      return parts.map((part) => part?.text ?? "");
+    }) ?? [];
+
+  return candidateTexts.join("");
+}
+
+const server = http.createServer((req, res) => {
+  const requestUrl = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
+
+  if (req.method === "OPTIONS") {
+    res.writeHead(204, {
+      "Access-Control-Allow-Origin": clientOrigin,
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+    });
+    return res.end();
+  }
+
+  if (req.method !== "POST" || requestUrl.pathname !== "/api/chat") {
+    return sendJson(res, 404, { error: "Not found." });
+  }
+
+  if (!geminiApiKey) {
+    return sendJson(res, 500, { error: "Gemini API key is not configured." });
+  }
+
+  let rawBody = "";
+  req.setEncoding("utf8");
+  req.on("data", (chunk) => {
+    rawBody += chunk;
+    if (rawBody.length > 32 * 1024) {
+      req.destroy();
+    }
+  });
+
+  req.on("end", async () => {
+    try {
+      const body = rawBody ? JSON.parse(rawBody) : {};
+      const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+      const messages = normalizeMessages(body.messages);
+      const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
+
+      if (!lastUserMessage) {
+        return sendJson(res, 400, { error: "At least one user message is required." });
+      }
+
+      const upstream = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:streamGenerateContent?alt=sse&key=${geminiApiKey}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [{ text: getAssistantPrompt() }],
+          },
+          contents: messages,
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: 512,
+          },
+        }),
+      });
+
+      if (!upstream.ok || !upstream.body) {
+        const errorText = await upstream.text().catch(() => "");
+        console.error("Gemini API error:", upstream.status, errorText);
+        return sendJson(res, 502, { error: "The AI assistant is unavailable right now." });
+      }
+
+      const reader = upstream.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let streamedText = "";
+      let responseStarted = false;
+
+      const startStream = () => {
+        if (responseStarted) return;
+        responseStarted = true;
+        res.writeHead(200, {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          "Access-Control-Allow-Origin": clientOrigin,
+        });
+      };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        
+        // Append new chunks to our string buffer
+        buffer += decoder.decode(value, { stream: true });
+
+        // Split by single newlines to process line-by-line safely
+        const lines = buffer.split("\n");
+        // Save the last incomplete line back into the buffer
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          // Skip empty lines or comments
+          if (!trimmed || !trimmed.startsWith("data:")) continue;
+
+          const data = trimmed.slice(5).trim();
+          if (!data || data === "[DONE]") continue;
+
+          try {
+            const parsed = JSON.parse(data);
+            const text = extractTextFromGeminiPayload(parsed);
+            if (text) {
+              startStream();
+              res.write(text);
+              streamedText += text;
+            }
+          } catch (err) {
+            // Log parsing errors if needed during debugging
+            console.error("Failed to parse SSE data line:", err);
+          }
+        }
+      }
+
+      // Final check: if there's any remaining data left in the buffer after the stream closes
+      if (buffer.trim().startsWith("data:")) {
+        try {
+          const data = buffer.trim().slice(5).trim();
+          if (data && data !== "[DONE]") {
+            const parsed = JSON.parse(data);
+            const text = extractTextFromGeminiPayload(parsed);
+            if (text) {
+              startStream();
+              res.write(text);
+              streamedText += text;
+            }
+          }
+        } catch {
+          // Ignore trailing noise
+        }
+      }
+
+      if (!streamedText.trim()) {
+        console.error("Gemini stream returned no usable text.");
+        if (!responseStarted) {
+          return sendJson(res, 502, { error: "The AI assistant is unavailable right now." });
+        }
+      }
+
+      return res.end();
+    } catch (error) {
+      console.error("Chat API error:", error);
+      return sendJson(res, 500, { error: "Internal server error." });
+    }
+  });
 });
 
-app.listen(port, () => {
-  console.log(`Contact API server listening on http://localhost:${port}`);
+server.listen(port, () => {
+  console.log(`Chat API server listening on http://localhost:${port}`);
 });
