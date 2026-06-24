@@ -3,13 +3,9 @@ import Logout from "./logout.js";
 import { useAuth } from "./AuthProvider";
 
 type HeaderProps = {
-  isOwnerMode: boolean;
-  onToggleView: () => void;
-  ownerLabel: string;
-  customerLabel: string;
 };
 
-export function Header({ isOwnerMode, onToggleView, ownerLabel, customerLabel }: HeaderProps) {
+export function Header(_: HeaderProps) {
   const { user, loading, error } = useAuth();
   const profileName = user?.user_metadata?.name || user?.email || "Owner";
   const avatar = user?.user_metadata?.picture;
@@ -25,11 +21,6 @@ export function Header({ isOwnerMode, onToggleView, ownerLabel, customerLabel }:
             <div className="app__productSub">AI-assisted storefront builder for tea shops</div>
           </div>
         </div>
-
-        <button type="button" className="app__modeToggle app__modeToggle--inline" onClick={onToggleView} aria-pressed={isOwnerMode}>
-          <span className="app__modeToggleLabel">{isOwnerMode ? ownerLabel : customerLabel}</span>
-          <span className="app__modeToggleHint">{isOwnerMode ? "Switch to customer browsing" : "Return to editing"}</span>
-        </button>
 
         <div className="app__barActions">
           {loading ? <span className="app__welcomeBadge">Checking session...</span> : null}

@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import "./App.css";
-import { AuthProvider } from "../components/AuthProvider";
+import { AuthProvider, useAuth } from "../components/AuthProvider";
 import { Header } from "../components/Header";
 import { defaultSiteConfig } from "./migrateConfig";
 import { ACCENT_OPTIONS, builderThemeStyle } from "./theme";
@@ -88,12 +88,10 @@ const UI_TEXT = {
 } as const;
 
 export default function App() {
-  const [viewMode, setViewMode] = useState<"owner" | "customer">("owner");
   const [config, setConfig] = useState<SiteConfig>(defaultSiteConfig);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
   const ui = UI_TEXT[config.language];
-  const isOwnerMode = viewMode === "owner";
   const socialFields: { key: SocialPlatform; label: string; placeholder: string }[] = [
     { key: "facebook", label: ui.facebook, placeholder: "https://facebook.com/yourpage" },
     { key: "instagram", label: ui.instagram, placeholder: "https://instagram.com/yourhandle" },
@@ -265,15 +263,13 @@ export default function App() {
     </aside>
   );
 
-  const appContent = (
-    <AuthProvider>
+  function AppShell() {
+    const { user } = useAuth();
+    const isOwnerMode = Boolean(user);
+
+    return (
       <div className="app" style={builderThemeStyle(config.themeMode, config.accentColor)}>
-        <Header
-          isOwnerMode={isOwnerMode}
-          onToggleView={() => setViewMode((mode) => (mode === "owner" ? "customer" : "owner"))}
-          ownerLabel={ui.customizeMode}
-          customerLabel={ui.customerMode}
-        />
+        <Header />
         <div className="app__siteShell">
           {isOwnerMode ? ownerPanel : null}
 
@@ -296,6 +292,12 @@ export default function App() {
           />
         </div>
       </div>
+    );
+  }
+
+  const appContent = (
+    <AuthProvider>
+      <AppShell />
     </AuthProvider>
   );
 
