@@ -223,6 +223,71 @@
   gap: 0.35rem;
 }
 
+.app__panelTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.app__stack {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.app__toppingRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  padding: 0.75rem 0.8rem;
+  background: var(--input-bg);
+}
+
+.app__toppingName {
+  font-weight: 600;
+  color: var(--sidebar-ink, var(--ink));
+}
+
+.app__toppingMeta {
+  margin-top: 0.1rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.app__toppingActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.45rem;
+}
+
+.app__miniInput {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.app__miniInput input {
+  width: 7.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.45rem;
+  padding: 0.35rem 0.5rem;
+  background: var(--input-bg);
+  color: var(--sidebar-ink, var(--ink));
+}
+
+.app__miniCheck {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.88rem;
+  color: var(--sidebar-ink, var(--ink));
+}
+
 .app__label {
   font-size: 0.82rem;
   font-weight: 600;

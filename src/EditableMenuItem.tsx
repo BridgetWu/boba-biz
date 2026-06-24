@@ -231,6 +231,19 @@ export function EditableMenuItem({ item, onUpdate }: EditableMenuItemProps) {
       {item.itemType === "food" ? (
         <p className="tsp__cardBody">Sweetness and toppings are disabled for non-drink items.</p>
       ) : null}
+      <label className="tsp__checkRow" style={{ marginTop: "0.5rem" }}>
+        <input
+          type="checkbox"
+          checked={Boolean(item.outOfStock)}
+          onChange={(e) =>
+            onUpdate({
+              ...item,
+              outOfStock: e.target.checked,
+            })
+          }
+        />
+        <span>Mark as out of stock</span>
+      </label>
     </li>
   );
 }

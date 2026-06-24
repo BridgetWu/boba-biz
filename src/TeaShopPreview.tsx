@@ -64,7 +64,7 @@ function socialIcon(platform: SocialPlatform) {
 }
 
 function lineTotal(item: CartItem): number {
-  const toppingsTotal = item.toppings.reduce((sum, topping) => sum + (topping.priceDelta ?? 0), 0);
+  const toppingsTotal = item.toppings.reduce((sum, topping) => sum + topping.price, 0);
   return (item.unitBasePrice + toppingsTotal) * item.quantity;
 }
 
@@ -292,10 +292,11 @@ export function TeaShopPreview({
   const total = subtotal + deliveryFee;
 
   const activeSweetnessOptions = activeItem?.customization?.sweetnessLevels?.length ? activeItem.customization.sweetnessLevels : config.sweetnessOptions;
-  const activeToppingOptions = activeItem?.customization?.toppings?.length ? activeItem.customization.toppings : config.toppingOptions.map((name) => ({ id: name.toLowerCase().replace(/\s+/g, "-"), name, priceDelta: 0 }));
+  const activeToppingOptions = config.toppingOptions;
 
   const addToCart = () => {
     if (!activeItem) return;
+    if (activeItem.outOfStock) return;
     setCart((prev) => [...prev, { id: `${activeItem.id}-${Date.now()}`, menuItemId: activeItem.id, itemName: tTerm(lang, activeItem.name), quantity: 1, unitBasePrice: parsePrice(activeItem.price), sweetnessLevel: selectedSweetness || undefined, toppings: activeItem.itemType === "food" ? [] : selectedToppings }]);
     setActiveItem(null);
   };
@@ -378,11 +379,11 @@ export function TeaShopPreview({
 
         <section id="menu" className="tsp__section"><div className="tsp__sectionHead"><h2 className="tsp__sectionTitle">{ui.digitalMenu}</h2><InlineEditableText className="tsp__sectionSub" multiline value={marketing.menuBanner} editable={Boolean(onMarketingCopyUpdate)} onCommit={(value) => onMarketingCopyUpdate?.("menuBanner", value)} /></div>
           <div className="tsp__menuGrid">{grouped.map((g) => (<div key={g.key} className="tsp__menuCol"><div className="tsp__menuColHead">{onRenameMenuSection ? <input className="tsp__input" value={g.label} onChange={(e) => onRenameMenuSection(g.key, e.target.value)} aria-label={ui.sectionTitle} /> : <h3 className="tsp__menuHeading">{g.label}</h3>}{onAddMenuItem ? <button type="button" className="tsp__menuAddBtn tsp__menuAddBtn--small" onClick={() => onAddMenuItem(g.key)}>{ui.addItem}</button> : null}{onDeleteMenuSection ? <button type="button" className="tsp__menuAddBtn tsp__menuAddBtn--small" onClick={() => onDeleteMenuSection(g.key)} disabled={config.menuSections.length <= 1}>{ui.delete}</button> : null}</div>
-              <ul className="tsp__menuList">{g.items.map((item) => isOwnerEditor ? (<EditableMenuItem key={item.id} item={item} onUpdate={onMenuItemUpdate || (() => {})} />) : (<li key={item.id} className="tsp__menuItem"><button type="button" className="tsp__menuOrderBtn" onClick={() => { setActiveItem(item); setSelectedSweetness(""); setSelectedToppings([]); }}>{item.image ? <img src={item.image} alt={tTerm(lang, item.name)} className="tsp__menuPublicImage" /> : <div className="tsp__menuPublicImage tsp__menuPublicImage--placeholder" aria-hidden>{ui.noImage}</div>}<div className="tsp__menuTop"><span className="tsp__menuName">{tTerm(lang, item.name)}</span><span className="tsp__menuPrice">{item.price}</span></div><p className="tsp__menuDesc">{tTerm(lang, item.description)}</p><span className="tsp__menuAddLabel">{ui.customizeAdd}</span></button></li>))}</ul></div>))}</div>
+              <ul className="tsp__menuList">{g.items.map((item) => isOwnerEditor ? (<EditableMenuItem key={item.id} item={item} onUpdate={onMenuItemUpdate || (() => {})} />) : (<li key={item.id} className="tsp__menuItem"><button type="button" className={item.outOfStock ? "tsp__menuOrderBtn tsp__menuOrderBtn--disabled" : "tsp__menuOrderBtn"} onClick={() => { if (item.outOfStock) return; setActiveItem(item); setSelectedSweetness(""); setSelectedToppings([]); }} disabled={item.outOfStock}>{item.image ? <img src={item.image} alt={tTerm(lang, item.name)} className="tsp__menuPublicImage" /> : <div className="tsp__menuPublicImage tsp__menuPublicImage--placeholder" aria-hidden>{ui.noImage}</div>}<div className="tsp__menuTop"><span className="tsp__menuName">{tTerm(lang, item.name)}</span><span className="tsp__menuPrice">{item.price}</span></div><p className="tsp__menuDesc">{tTerm(lang, item.description)}</p>{item.outOfStock ? <span className="tsp__menuStockBadge">Out of stock</span> : <span className="tsp__menuAddLabel">{ui.customizeAdd}</span>}</button></li>))}</ul></div>))}</div>
           {onAddMenuSection ? <button type="button" className="tsp__menuAddBtn" onClick={onAddMenuSection}>{ui.addSection}</button> : null}
         </section>
 
-        {config.isDeliveryEnabled ? <section id="delivery" className="tsp__section tsp__section--alt"><div className="tsp__sectionHead"><h2 className="tsp__sectionTitle">{ui.checkoutTitle}</h2><p className="tsp__sectionSub">{ui.checkoutSub}</p></div><div className="tsp__checkoutGrid"><div className="tsp__card"><h3 className="tsp__cardTitle">{ui.yourCart}</h3>{cart.length === 0 ? <p className="tsp__cardBody">{ui.cartEmpty}</p> : null}{cart.map((item) => (<div key={item.id} className="tsp__cartLine"><div><strong>{item.itemName}</strong>{item.sweetnessLevel ? <p className="tsp__cardBody">{ui.sweetness}: {tTerm(lang, item.sweetnessLevel)}</p> : null}{item.toppings.length > 0 ? <p className="tsp__cardBody">{ui.toppings}: {item.toppings.map((t) => `${tTerm(lang, t.name)}${t.priceDelta ? ` (+${formatUsd(t.priceDelta)})` : ""}`).join(", ")}</p> : null}</div><div className="tsp__menuPrice">{formatUsd(lineTotal(item))}</div></div>))}<div className="tsp__totals"><div><span>{ui.subtotal}</span><span>{formatUsd(subtotal)}</span></div><div><span>{ui.deliveryFee}</span><span>{formatUsd(deliveryFee)}</span></div><div className="tsp__grand"><span>{ui.total}</span><span>{formatUsd(total)}</span></div></div></div>
+        {config.isDeliveryEnabled ? <section id="delivery" className="tsp__section tsp__section--alt"><div className="tsp__sectionHead"><h2 className="tsp__sectionTitle">{ui.checkoutTitle}</h2><p className="tsp__sectionSub">{ui.checkoutSub}</p></div><div className="tsp__checkoutGrid"><div className="tsp__card"><h3 className="tsp__cardTitle">{ui.yourCart}</h3>{cart.length === 0 ? <p className="tsp__cardBody">{ui.cartEmpty}</p> : null}{cart.map((item) => (<div key={item.id} className="tsp__cartLine"><div><strong>{item.itemName}</strong>{item.sweetnessLevel ? <p className="tsp__cardBody">{ui.sweetness}: {tTerm(lang, item.sweetnessLevel)}</p> : null}{item.toppings.length > 0 ? <p className="tsp__cardBody">{ui.toppings}: {item.toppings.map((t) => `${tTerm(lang, t.name)}${t.price ? ` (+${formatUsd(t.price)})` : ""}`).join(", ")}</p> : null}</div><div className="tsp__menuPrice">{formatUsd(lineTotal(item))}</div></div>))}<div className="tsp__totals"><div><span>{ui.subtotal}</span><span>{formatUsd(subtotal)}</span></div><div><span>{ui.deliveryFee}</span><span>{formatUsd(deliveryFee)}</span></div><div className="tsp__grand"><span>{ui.total}</span><span>{formatUsd(total)}</span></div></div></div>
             <div className="tsp__card"><h3 className="tsp__cardTitle">{ui.checkout}</h3><label className="tsp__fieldLabel" htmlFor="address">{ui.deliveryAddress}</label><input id="address" className="tsp__input" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} />
               <label className="tsp__fieldLabel" htmlFor="cardName">{ui.cardholderName}</label><input id="cardName" className="tsp__input" value={payment.cardholderName} onChange={(e) => setPayment((prev) => ({ ...prev, cardholderName: e.target.value }))} />
               <label className="tsp__fieldLabel" htmlFor="cardNumber">{ui.cardNumber}</label><input id="cardNumber" className="tsp__input" inputMode="numeric" value={payment.cardNumber} onChange={(e) => setPayment((prev) => ({ ...prev, cardNumber: maskCardNumber(e.target.value) }))} placeholder="1234 5678 9012 3456" />
@@ -421,8 +422,9 @@ export function TeaShopPreview({
       <WebsiteChatWidget config={config} />
 
       {activeItem ? <div className="tsp__modalBackdrop" role="dialog" aria-modal="true"><div className="tsp__modal"><h3 className="tsp__cardTitle">{ui.customize} {tTerm(lang, activeItem.name)}</h3><p className="tsp__cardBody">{ui.basePrice}: {activeItem.price}</p>
-        {activeItem.itemType !== "food" ? <><div><p className="tsp__fieldLabel">{ui.sweetnessLevel}</p><div className="tsp__chips">{activeSweetnessOptions.map((option) => <button key={option} type="button" className={selectedSweetness === option ? "tsp__chip tsp__chip--on" : "tsp__chip"} onClick={() => setSelectedSweetness(option)}>{tTerm(lang, option)}</button>)}</div></div><div><p className="tsp__fieldLabel">{ui.toppings}</p><div className="tsp__toppingList">{activeToppingOptions.map((option) => { const checked = selectedToppings.some((t) => t.id === option.id); return <label key={option.id} className="tsp__checkRow"><input type="checkbox" checked={checked} onChange={(e) => setSelectedToppings((prev) => e.target.checked ? [...prev, option] : prev.filter((t) => t.id !== option.id))} /><span>{tTerm(lang, option.name)} {option.priceDelta ? `(+${formatUsd(option.priceDelta)})` : ""}</span></label>; })}</div></div></> : <p className="tsp__cardBody">{ui.nonDrinkMessage}</p>}
-        <div className="tsp__ctaRow"><button type="button" className="tsp__btn tsp__btn--ghost" onClick={() => setActiveItem(null)}>{ui.cancel}</button><button type="button" className="tsp__btn tsp__btn--primary" onClick={addToCart}>{ui.addToOrder}</button></div>
+        {activeItem.outOfStock ? <p className="tsp__cardBody">This item is currently out of stock.</p> : null}
+        {activeItem.itemType !== "food" ? <><div><p className="tsp__fieldLabel">{ui.sweetnessLevel}</p><div className="tsp__chips">{activeSweetnessOptions.map((option) => <button key={option} type="button" className={selectedSweetness === option ? "tsp__chip tsp__chip--on" : "tsp__chip"} onClick={() => setSelectedSweetness(option)}>{tTerm(lang, option)}</button>)}</div></div><div><p className="tsp__fieldLabel">{ui.toppings}</p><div className="tsp__toppingList">{activeToppingOptions.map((option) => { const checked = selectedToppings.some((t) => t.id === option.id); return <label key={option.id} className="tsp__checkRow"><input type="checkbox" checked={checked} onChange={(e) => setSelectedToppings((prev) => e.target.checked ? [...prev, option] : prev.filter((t) => t.id !== option.id))} /><span>{tTerm(lang, option.name)} {option.price ? `(+${formatUsd(option.price)})` : ""}</span></label>; })}</div></div></> : <p className="tsp__cardBody">{ui.nonDrinkMessage}</p>}
+        <div className="tsp__ctaRow"><button type="button" className="tsp__btn tsp__btn--ghost" onClick={() => setActiveItem(null)}>{ui.cancel}</button><button type="button" className="tsp__btn tsp__btn--primary" onClick={addToCart} disabled={activeItem.outOfStock}>{ui.addToOrder}</button></div>
       </div></div> : null}
 
       <style>{`
@@ -459,6 +461,7 @@ export function TeaShopPreview({
         .tsp__menuColHead { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
         .tsp__menuList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1rem; }
         .tsp__menuOrderBtn { width: 100%; text-align: left; border: 1px solid var(--tsp-border); border-radius: .75rem; padding: .8rem; background: var(--tsp-surface); cursor: pointer; }
+        .tsp__menuOrderBtn--disabled { opacity: .65; cursor: not-allowed; }
         .tsp__menuOrderBtn:hover { border-color: var(--tsp-accent); }
         .tsp__menuPublicImage { width: 100%; aspect-ratio: 4 / 3; height: auto; object-fit: contain; border-radius: .5rem; margin-bottom: .7rem; border: 1px solid var(--tsp-border); background: var(--tsp-surface); }
         .tsp__menuPublicImage--placeholder { display: grid; place-items: center; color: var(--tsp-muted); font-size: .8rem; background: var(--tsp-accent-soft); }
@@ -476,6 +479,7 @@ export function TeaShopPreview({
         .tsp__menuNameInput, .tsp__menuPriceInput { font-weight: 600; }
         .tsp__menuDescInput { resize: vertical; min-height: 5rem; margin-top: .25rem; }
         .tsp__menuAddLabel { margin-top: .6rem; display: inline-block; color: var(--tsp-accent); font-weight: 700; font-size: .8rem; text-transform: uppercase; }
+        .tsp__menuStockBadge { margin-top: .6rem; display: inline-block; color: #b42318; font-weight: 700; font-size: .8rem; text-transform: uppercase; }
         .tsp__menuAddBtn { margin-top: 1rem; font: inherit; border-radius: 999px; border: 1px solid var(--tsp-accent); background: var(--tsp-accent-soft); color: var(--tsp-accent); padding: .5rem .9rem; font-weight: 700; cursor: pointer; }
         .tsp__menuAddBtn--small { margin-top: 0; padding: .35rem .7rem; font-size: .75rem; }
         .tsp__menuTop { display: flex; justify-content: space-between; gap: .75rem; font-weight: 600; }
@@ -514,6 +518,7 @@ export function TeaShopPreview({
         .tsp__chip--on { background: var(--tsp-accent-soft); border-color: var(--tsp-accent); color: var(--tsp-accent); font-weight: 700; }
         .tsp__toppingList { display: grid; gap: .35rem; }
         .tsp__checkRow { display: flex; align-items: center; gap: .5rem; color: var(--tsp-muted); }
+        .tsp__checkRow--disabled { opacity: .65; }
         .tsp__editable { cursor: text; border-bottom: 1px dashed transparent; }
         .tsp__editable:hover { border-bottom-color: var(--tsp-accent); }
         .tsp__inlineEditor { width: 100%; font: inherit; border: 1px solid var(--tsp-accent); border-radius: .45rem; background: var(--tsp-surface); color: var(--tsp-deep); padding: .35rem .5rem; }

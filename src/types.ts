@@ -30,7 +30,7 @@ export interface MarketingCopyByLanguage {
 export interface ToppingOption {
   id: string;
   name: string;
-  priceDelta?: number;
+  price: number;
 }
 
 export interface MenuCustomization {
@@ -48,6 +48,7 @@ export interface MenuItem {
   itemType: "drink" | "food";
   image?: string;
   customization?: MenuCustomization;
+  outOfStock?: boolean;
 }
 
 export interface MenuSection {
@@ -99,7 +100,7 @@ export interface SiteConfig {
   menuItems: MenuItem[];
   isDeliveryEnabled: boolean;
   sweetnessOptions: string[];
-  toppingOptions: string[];
+  toppingOptions: ToppingOption[];
   delivery: {
     pickup: boolean;
     delivery: boolean;

@@ -3,7 +3,7 @@ import "./App.css";
 import { defaultSiteConfig } from "./migrateConfig";
 import { ACCENT_OPTIONS, builderThemeStyle } from "./theme";
 import { TeaShopPreview } from "./TeaShopPreview";
-import type { SiteConfig, MenuItem, SocialPlatform } from "./types";
+import type { SiteConfig, MenuItem, SocialPlatform, ToppingOption } from "./types";
 
 const UI_TEXT = {
   en: {
@@ -109,6 +109,37 @@ export default function App() {
     }));
   }, []);
 
+  const handleAddTopping = useCallback(() => {
+    const name = window.prompt("New topping name");
+    if (!name?.trim()) return;
+    const trimmed = name.trim();
+    setConfig((c) => ({
+      ...c,
+      toppingOptions: [
+        ...c.toppingOptions,
+        {
+          id: `${trimmed.toLowerCase().replace(/\s+/g, "-")}-${Date.now()}`,
+          name: trimmed,
+          price: 0,
+        },
+      ],
+    }));
+  }, []);
+
+  const handleRemoveTopping = useCallback((id: string) => {
+    setConfig((c) => ({
+      ...c,
+      toppingOptions: c.toppingOptions.filter((t) => t.id !== id),
+    }));
+  }, []);
+
+  const handleToppingPriceChange = useCallback((id: string, price: number) => {
+    setConfig((c) => ({
+      ...c,
+      toppingOptions: c.toppingOptions.map((t) => (t.id === id ? { ...t, price } : t)),
+    }));
+  }, []);
+
   const handleShopIconUpload = useCallback((file: File | null) => {
     if (!file) return;
     const reader = new FileReader();
@@ -195,6 +226,35 @@ export default function App() {
             ))}
           </div>
           <p className="app__accentLabel">{ui.selected} {ACCENT_OPTIONS.find((a) => a.id === config.accentColor)?.label ?? "Red"}</p>
+        </div>
+
+        <div className="app__field">
+          <div className="app__panelTitleRow">
+            <span className="app__label">{ui.toppingsPresets}</span>
+            <button type="button" className="app__btn" onClick={handleAddTopping}>{ui.addTopping}</button>
+          </div>
+          <div className="app__stack">
+            {config.toppingOptions.map((topping: ToppingOption) => (
+              <div key={topping.id} className="app__toppingRow">
+                <div>
+                  <div className="app__toppingName">{topping.name}</div>
+                </div>
+                <div className="app__toppingActions">
+                  <label className="app__miniInput">
+                    <span>Price</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.05"
+                      value={topping.price}
+                      onChange={(e) => handleToppingPriceChange(topping.id, Number.isFinite(e.target.valueAsNumber) ? e.target.valueAsNumber : 0)}
+                    />
+                  </label>
+                  <button type="button" className="app__btn app__btn--ghost" onClick={() => handleRemoveTopping(topping.id)}>Delete</button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>

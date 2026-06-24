@@ -13,11 +13,6 @@ export const MENU_PRESETS: Record<string, MenuItem[]> = {
       itemType: "drink",
       customization: {
         sweetnessLevels: ["0%", "25%", "50%", "75%", "100%"],
-        toppings: [
-          { id: "tapioca-pearls", name: "Tapioca Pearls", priceDelta: 0.75 },
-          { id: "lychee-jelly", name: "Lychee Jelly", priceDelta: 0.85 },
-          { id: "cheese-foam", name: "Cheese Foam", priceDelta: 1.25 },
-        ],
       },
     },
     {
@@ -31,11 +26,6 @@ export const MENU_PRESETS: Record<string, MenuItem[]> = {
       itemType: "drink",
       customization: {
         sweetnessLevels: ["0%", "25%", "50%", "75%", "100%"],
-        toppings: [
-          { id: "tapioca-pearls", name: "Tapioca Pearls", priceDelta: 0.75 },
-          { id: "pudding", name: "Pudding", priceDelta: 0.8 },
-          { id: "cheese-foam", name: "Cheese Foam", priceDelta: 1.25 },
-        ],
       },
     },
     {
@@ -49,11 +39,6 @@ export const MENU_PRESETS: Record<string, MenuItem[]> = {
       itemType: "drink",
       customization: {
         sweetnessLevels: ["0%", "25%", "50%", "75%", "100%"],
-        toppings: [
-          { id: "coconut-jelly", name: "Coconut Jelly", priceDelta: 0.85 },
-          { id: "aloe-vera", name: "Aloe Vera", priceDelta: 0.7 },
-          { id: "lychee-jelly", name: "Lychee Jelly", priceDelta: 0.85 },
-        ],
       },
     },
     {

@@ -51,6 +51,12 @@ const SOCIAL_PLATFORMS: SocialPlatform[] = [
   "youtube",
 ];
 
+const DEFAULT_TOPPING_OPTIONS: ToppingOption[] = [
+  { id: "1", name: "Boba pearls", price: 0.5 },
+  { id: "2", name: "Lychee jelly", price: 0.5 },
+  { id: "3", name: "Aloe vera", price: 0.5 },
+];
+
 export function defaultSiteConfig(): SiteConfig {
   return {
     shopName: "",
@@ -77,7 +83,7 @@ export function defaultSiteConfig(): SiteConfig {
     menuItems: MENU_PRESETS.classic.map((item) => ({ ...item })),
     isDeliveryEnabled: true,
     sweetnessOptions: ["0%", "25%", "50%", "75%", "100%"],
-    toppingOptions: ["Boba pearls", "Lychee jelly", "Aloe vera"],
+    toppingOptions: DEFAULT_TOPPING_OPTIONS.map((t) => ({ ...t })),
     delivery: {
       pickup: true,
       delivery: true,
@@ -109,10 +115,14 @@ function normalizeMenuItem(item: unknown, fallback: MenuItem): MenuItem {
           (value): ToppingOption => ({
             id: typeof value.id === "string" ? value.id : crypto.randomUUID(),
             name: typeof value.name === "string" ? value.name : "Topping",
-            priceDelta:
-              typeof value.priceDelta === "number" && Number.isFinite(value.priceDelta)
-                ? value.priceDelta
-                : undefined,
+            price:
+              typeof value.price === "number" && Number.isFinite(value.price)
+                ? value.price
+                : typeof value.currentPrice === "number" && Number.isFinite(value.currentPrice)
+                  ? value.currentPrice
+                  : typeof value.basePrice === "number" && Number.isFinite(value.basePrice)
+                    ? value.basePrice
+                    : 0,
           }),
         )
     : undefined;
@@ -140,6 +150,8 @@ function normalizeMenuItem(item: unknown, fallback: MenuItem): MenuItem {
           ? "food"
           : fallback.itemType,
     image: typeof raw.image === "string" ? raw.image : fallback.image,
+    outOfStock:
+      typeof raw.outOfStock === "boolean" ? raw.outOfStock : fallback.outOfStock,
     customization:
       sweetnessLevels || toppings
         ? {
@@ -267,7 +279,36 @@ export function migrateSiteConfig(raw: unknown): SiteConfig {
       ? (r.sweetnessOptions.filter((v): v is string => typeof v === "string"))
       : base.sweetnessOptions,
     toppingOptions: Array.isArray(r.toppingOptions)
-      ? (r.toppingOptions.filter((v): v is string => typeof v === "string"))
+      ? r.toppingOptions
+          .map((value): ToppingOption | null => {
+            if (typeof value === "string") {
+              const name = value.trim();
+              if (!name) return null;
+              return {
+                id: name.toLowerCase().replace(/\s+/g, "-"),
+                name,
+                price: 0,
+              };
+            }
+            if (!value || typeof value !== "object") return null;
+            const topping = value as Record<string, unknown>;
+            const name = typeof topping.name === "string" ? topping.name : "Topping";
+            return {
+              id: typeof topping.id === "string" ? topping.id : name.toLowerCase().replace(/\s+/g, "-"),
+              name,
+              price:
+                typeof topping.price === "number" && Number.isFinite(topping.price)
+                  ? topping.price
+                  : typeof topping.currentPrice === "number" && Number.isFinite(topping.currentPrice)
+                    ? topping.currentPrice
+                    : typeof topping.basePrice === "number" && Number.isFinite(topping.basePrice)
+                      ? topping.basePrice
+                      : typeof topping.priceDelta === "number" && Number.isFinite(topping.priceDelta)
+                        ? topping.priceDelta
+                        : 0,
+            };
+          })
+          .filter((value): value is ToppingOption => value !== null)
       : base.toppingOptions,
     delivery,
     billing:
