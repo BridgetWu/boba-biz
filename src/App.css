@@ -32,9 +32,39 @@
   white-space: nowrap;
 }
 
+.app__welcomeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  background: color-mix(in srgb, var(--surface) 80%, white);
+  font-size: 0.88rem;
+  color: var(--ink);
+}
+
+.app__welcomeBadge--error {
+  color: var(--warn);
+}
+
+.app__avatar {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  object-fit: cover;
+}
+
 .app__bar {
   border-bottom: 1px solid var(--line);
   background: var(--surface);
+}
+
+.app__bar--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  box-shadow: 0 8px 30px rgba(25, 35, 28, 0.08);
 }
 
 .app__barInner {
@@ -53,6 +83,22 @@
   gap: 0.65rem;
   flex-wrap: wrap;
   justify-content: flex-end;
+}
+
+.app__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.app__brandMark {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.8rem;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.75), transparent 35%),
+    linear-gradient(135deg, var(--accent), #7ea184);
+  box-shadow: 0 12px 28px rgba(61, 92, 72, 0.22);
 }
 
 .app__product {
@@ -115,6 +161,18 @@
 
 .app__siteModeBar .app__modeToggle {
   pointer-events: auto;
+}
+
+.authButtonWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.app__authError {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--warn);
 }
 
 .app__wizard {
@@ -417,6 +475,12 @@
 
 .app__btn--ghost {
   background: transparent;
+}
+
+.app__btn--logout {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+  background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 72%, white));
+  color: #fffdf8;
 }
 
 .app__preview {

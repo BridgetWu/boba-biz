@@ -1,5 +1,8 @@
 import { useCallback, useState } from "react";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import "./App.css";
+import { AuthProvider } from "../components/AuthProvider";
+import { Header } from "../components/Header";
 import { defaultSiteConfig } from "./migrateConfig";
 import { ACCENT_OPTIONS, builderThemeStyle } from "./theme";
 import { TeaShopPreview } from "./TeaShopPreview";
@@ -87,6 +90,7 @@ const UI_TEXT = {
 export default function App() {
   const [viewMode, setViewMode] = useState<"owner" | "customer">("owner");
   const [config, setConfig] = useState<SiteConfig>(defaultSiteConfig);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.REACT_APP_GOOGLE_CLIENT_ID || "";
 
   const ui = UI_TEXT[config.language];
   const isOwnerMode = viewMode === "owner";
@@ -261,40 +265,39 @@ export default function App() {
     </aside>
   );
 
-  return (
-    <div className="app" style={builderThemeStyle(config.themeMode, config.accentColor)}>
-      <div className="app__siteShell">
-        <div className="app__siteModeBar">
-          <button
-            type="button"
-            className="app__modeToggle"
-            onClick={() => setViewMode((mode) => (mode === "owner" ? "customer" : "owner"))}
-            aria-pressed={isOwnerMode}
-          >
-            <span className="app__modeToggleLabel">{isOwnerMode ? ui.customizeMode : ui.customerMode}</span>
-            <span className="app__modeToggleHint">{isOwnerMode ? "Switch to customer browsing" : "Return to editing"}</span>
-          </button>
-        </div>
-        {isOwnerMode ? ownerPanel : null}
-
-        <TeaShopPreview
-          config={config}
-          onMenuItemUpdate={isOwnerMode ? handleMenuItemUpdate : undefined}
-          onLanguageToggle={toggleLanguage}
-          onMarketingCopyUpdate={
-            isOwnerMode
-              ? (field, value) =>
-                  setConfig((c) => ({
-                    ...c,
-                    marketingCopy: {
-                      ...c.marketingCopy,
-                      [c.language]: { ...c.marketingCopy[c.language], [field]: value },
-                    },
-                  }))
-              : undefined
-          }
+  const appContent = (
+    <AuthProvider>
+      <div className="app" style={builderThemeStyle(config.themeMode, config.accentColor)}>
+        <Header
+          isOwnerMode={isOwnerMode}
+          onToggleView={() => setViewMode((mode) => (mode === "owner" ? "customer" : "owner"))}
+          ownerLabel={ui.customizeMode}
+          customerLabel={ui.customerMode}
         />
+        <div className="app__siteShell">
+          {isOwnerMode ? ownerPanel : null}
+
+          <TeaShopPreview
+            config={config}
+            onMenuItemUpdate={isOwnerMode ? handleMenuItemUpdate : undefined}
+            onLanguageToggle={toggleLanguage}
+            onMarketingCopyUpdate={
+              isOwnerMode
+                ? (field, value) =>
+                    setConfig((c) => ({
+                      ...c,
+                      marketingCopy: {
+                        ...c.marketingCopy,
+                        [c.language]: { ...c.marketingCopy[c.language], [field]: value },
+                      },
+                    }))
+                : undefined
+            }
+          />
+        </div>
       </div>
-    </div>
+    </AuthProvider>
   );
+
+  return googleClientId ? <GoogleOAuthProvider clientId={googleClientId}>{appContent}</GoogleOAuthProvider> : appContent;
 }
