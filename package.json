@@ -12,7 +12,8 @@
     "@react-oauth/google": "^0.13.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "resend": "^6.12.4"
+    "resend": "^6.12.4",
+    "stripe": "^22.3.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
