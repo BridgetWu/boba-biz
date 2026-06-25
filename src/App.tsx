@@ -87,6 +87,49 @@ const UI_TEXT = {
   },
 } as const;
 
+function AppShell({
+  config,
+  setConfig,
+  toggleLanguage,
+  handleMenuItemUpdate,
+  ownerPanel,
+}: {
+  config: SiteConfig;
+  setConfig: React.Dispatch<React.SetStateAction<SiteConfig>>;
+  toggleLanguage: () => void;
+  handleMenuItemUpdate: (item: MenuItem) => void;
+  ownerPanel: React.ReactNode;
+}) {
+  const { user } = useAuth();
+  const isOwnerMode = Boolean(user);
+
+  return (
+    <div className="app" style={builderThemeStyle(config.themeMode, config.accentColor)}>
+      <Header />
+      <div className={isOwnerMode ? "app__ownerLayout" : "app__siteShell"}>
+        {isOwnerMode ? ownerPanel : null}
+        <TeaShopPreview
+          config={config}
+          onMenuItemUpdate={isOwnerMode ? handleMenuItemUpdate : undefined}
+          onLanguageToggle={toggleLanguage}
+          onMarketingCopyUpdate={
+            isOwnerMode
+              ? (field, value) =>
+                  setConfig((c) => ({
+                    ...c,
+                    marketingCopy: {
+                      ...c.marketingCopy,
+                      [c.language]: { ...c.marketingCopy[c.language], [field]: value },
+                    },
+                  }))
+              : undefined
+          }
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [config, setConfig] = useState<SiteConfig>(defaultSiteConfig);
   const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || import.meta.env.REACT_APP_GOOGLE_CLIENT_ID || "";
@@ -154,7 +197,7 @@ export default function App() {
   }, []);
 
   const ownerPanel = (
-    <aside className="app__wizard app__wizard--floating" aria-label="Owner customization panel">
+    <aside className="app__wizard" aria-label="Owner customization panel">
       <div className="app__wizardInner">
         <div className="app__panelTitleRow">
           <h2 className="app__stepTitle">{ui.customizeMode}</h2>
@@ -263,41 +306,15 @@ export default function App() {
     </aside>
   );
 
-  function AppShell() {
-    const { user } = useAuth();
-    const isOwnerMode = Boolean(user);
-
-    return (
-      <div className="app" style={builderThemeStyle(config.themeMode, config.accentColor)}>
-        <Header />
-        <div className="app__siteShell">
-          {isOwnerMode ? ownerPanel : null}
-
-          <TeaShopPreview
-            config={config}
-            onMenuItemUpdate={isOwnerMode ? handleMenuItemUpdate : undefined}
-            onLanguageToggle={toggleLanguage}
-            onMarketingCopyUpdate={
-              isOwnerMode
-                ? (field, value) =>
-                    setConfig((c) => ({
-                      ...c,
-                      marketingCopy: {
-                        ...c.marketingCopy,
-                        [c.language]: { ...c.marketingCopy[c.language], [field]: value },
-                      },
-                    }))
-                : undefined
-            }
-          />
-        </div>
-      </div>
-    );
-  }
-
   const appContent = (
     <AuthProvider>
-      <AppShell />
+      <AppShell
+        config={config}
+        setConfig={setConfig}
+        toggleLanguage={toggleLanguage}
+        handleMenuItemUpdate={handleMenuItemUpdate}
+        ownerPanel={ownerPanel}
+      />
     </AuthProvider>
   );
 
