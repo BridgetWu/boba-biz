@@ -1,5 +1,6 @@
-import { useMemo, useState, type FormEvent } from "react";
-import type { DeliveryOrder, LanguageCode, MenuItem, SiteConfig, SocialPlatform, ToppingOption } from "./types";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { initializePaddle } from "@paddle/paddle-js";
+import type { LanguageCode, MenuItem, SiteConfig, SocialPlatform, ToppingOption } from "./types";
 import { siteThemeStyle } from "./theme";
 import { EditableMenuItem } from "./EditableMenuItem";
 import { WebsiteChatWidget } from "./WebsiteChatWidget";
@@ -12,13 +13,6 @@ interface CartItem {
   unitBasePrice: number;
   sweetnessLevel?: string;
   toppings: ToppingOption[];
-}
-
-interface PaymentForm {
-  cardholderName: string;
-  cardNumber: string;
-  expirationDate: string;
-  cvv: string;
 }
 
 interface ContactForm {
@@ -68,22 +62,7 @@ function lineTotal(item: CartItem): number {
   return (item.unitBasePrice + toppingsTotal) * item.quantity;
 }
 
-function maskCardNumber(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 16);
-  return digits.replace(/(.{4})/g, "$1 ").trim();
-}
-
-function maskExpDate(value: string): string {
-  const digits = value.replace(/\D/g, "").slice(0, 4);
-  if (digits.length < 3) return digits;
-  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
-}
-
-function maskCvv(value: string): string {
-  return value.replace(/\D/g, "").slice(0, 4);
-}
-
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "http://localhost:4000";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() || "";
 
 const UI_COPY: Record<LanguageCode, Record<string, string>> = {
   en: {
@@ -96,7 +75,7 @@ const UI_COPY: Record<LanguageCode, Record<string, string>> = {
     customizeAdd: "Customize & add",
     noImage: "No image",
     checkoutTitle: "Delivery checkout",
-    checkoutSub: "Build your order, add your address, and complete payment details below.",
+    checkoutSub: "Build your order, add your address, and checkout securely.",
     yourCart: "Your cart",
     cartEmpty: "Your cart is empty.",
     sweetness: "Sweetness",
@@ -106,12 +85,7 @@ const UI_COPY: Record<LanguageCode, Record<string, string>> = {
     total: "Total",
     checkout: "Checkout",
     deliveryAddress: "Delivery address",
-    cardholderName: "Cardholder Name",
-    cardNumber: "Card Number",
-    expirationDate: "Expiration Date",
     placeOrder: "Place order",
-    orderPlaced: "Order",
-    orderPlacedSuffix: "placed. Total charged:",
     customize: "Customize",
     basePrice: "Base price",
     sweetnessLevel: "Sweetness level",
@@ -144,7 +118,7 @@ const UI_COPY: Record<LanguageCode, Record<string, string>> = {
     customizeAdd: "\u5ba2\u88fd\u4e26\u52a0\u5165",
     noImage: "\u7121\u5716\u7247",
     checkoutTitle: "\u5916\u9001\u7d50\u5e33",
-    checkoutSub: "\u5efa\u7acb\u60a8\u7684\u8a02\u55ae\uff0c\u586b\u5beb\u5730\u5740\uff0c\u4e26\u5b8c\u6210\u4ed8\u6b3e\u8cc7\u8a0a\u3002",
+    checkoutSub: "\u5efa\u7acb\u60a8\u7684\u8a02\u55ae\uff0c\u586b\u5beb\u5730\u5740\uff0c\u5b89\u5168\u7d50\u5e33\u3002",
     yourCart: "\u4f60\u7684\u8cfc\u7269\u8eca",
     cartEmpty: "\u8cfc\u7269\u8eca\u76ee\u524d\u662f\u7a7a\u7684\u3002",
     sweetness: "\u751c\u5ea6",
@@ -154,12 +128,7 @@ const UI_COPY: Record<LanguageCode, Record<string, string>> = {
     total: "\u7e3d\u8a08",
     checkout: "\u7d50\u5e33",
     deliveryAddress: "\u5916\u9001\u5730\u5740",
-    cardholderName: "\u6301\u5361\u4eba\u59d3\u540d",
-    cardNumber: "\u5361\u865f",
-    expirationDate: "\u5230\u671f\u65e5",
     placeOrder: "\u9001\u51fa\u8a02\u55ae",
-    orderPlaced: "\u8a02\u55ae",
-    orderPlacedSuffix: "\u4e0b\u55ae\u6210\u529f\uff0c\u7e3d\u6263\u6b3e\uff1a",
     customize: "\u5ba2\u88fd",
     basePrice: "\u57fa\u790e\u50f9\u683c",
     sweetnessLevel: "\u751c\u5ea6\u9078\u64c7",
@@ -274,13 +243,27 @@ export function TeaShopPreview({
   const [selectedToppings, setSelectedToppings] = useState<ToppingOption[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [payment, setPayment] = useState<PaymentForm>({ cardholderName: "", cardNumber: "", expirationDate: "", cvv: "" });
   const [checkoutError, setCheckoutError] = useState("");
-  const [placedOrder, setPlacedOrder] = useState<DeliveryOrder | null>(null);
   const [contact, setContact] = useState<ContactForm>({ firstName: "", lastName: "", email: "", message: "" });
   const [contactStatus, setContactStatus] = useState("");
   const [contactError, setContactError] = useState("");
   const [isContactSubmitting, setIsContactSubmitting] = useState(false);
+  const [paddle, setPaddle] = useState<Awaited<ReturnType<typeof initializePaddle>>>(undefined);
+
+  useEffect(() => {
+    const token = import.meta.env.VITE_PADDLE_CLIENT_SIDE_TOKEN as string | undefined;
+    if (!token) return;
+    initializePaddle({ environment: "sandbox", token }).then(setPaddle);
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "success") {
+      setCart([]);
+      setDeliveryAddress("");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
 
   const grouped = config.menuSections.map((section) => ({ key: section.id, label: section.title, items: config.menuItems.filter((m) => m.sectionId === section.id) }));
   const socialLinks = SOCIAL_ORDER.flatMap((platform) => {
@@ -301,18 +284,55 @@ export function TeaShopPreview({
     setActiveItem(null);
   };
 
-  const placeOrder = () => {
+  const placeOrder = async () => {
     setCheckoutError("");
-    if (cart.length === 0) return setCheckoutError(lang === "zh-Hant" ? "???????????" : "Add at least one item before checkout.");
-    if (!deliveryAddress.trim()) return setCheckoutError(lang === "zh-Hant" ? "????????" : "Delivery address is required.");
-    const cardDigits = payment.cardNumber.replace(/\D/g, "");
-    if (payment.cardholderName.trim().length < 2) return setCheckoutError(lang === "zh-Hant" ? "?????????" : "Cardholder name is required.");
-    if (cardDigits.length < 13 || cardDigits.length > 19) return setCheckoutError(lang === "zh-Hant" ? "????????" : "Enter a valid card number.");
-    if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(payment.expirationDate)) return setCheckoutError(lang === "zh-Hant" ? "?????? MM/YY?" : "Use MM/YY for the expiration date.");
-    if (!/^\d{3,4}$/.test(payment.cvv)) return setCheckoutError(lang === "zh-Hant" ? "CVV ?? 3 ? 4 ??" : "CVV must be 3 or 4 digits.");
+    if (cart.length === 0) return setCheckoutError(lang === "zh-Hant" ? "請先加入至少一個品項" : "Add at least one item before checkout.");
+    if (!deliveryAddress.trim()) return setCheckoutError(lang === "zh-Hant" ? "請填寫外送地址" : "Delivery address is required.");
+    if (!paddle) return setCheckoutError(lang === "zh-Hant" ? "付款系統載入中，請稍後再試。" : "Payment system is loading. Please try again.");
 
-    setPlacedOrder({ id: `ord-${Date.now()}`, createdAtIso: new Date().toISOString(), items: cart.map((item) => ({ menuItemId: item.menuItemId, itemName: item.itemName, quantity: item.quantity, unitBasePrice: item.unitBasePrice, sweetnessLevel: item.sweetnessLevel, toppings: item.toppings, lineTotal: lineTotal(item) })), subtotal, deliveryFee, total, deliveryAddress: deliveryAddress.trim(), payment: { cardholderName: payment.cardholderName.trim(), maskedCardNumber: `**** **** **** ${cardDigits.slice(-4)}`, expirationDate: payment.expirationDate, maskedCvv: "***" } });
-    setCart([]); setDeliveryAddress(""); setPayment({ cardholderName: "", cardNumber: "", expirationDate: "", cvv: "" });
+    try {
+      const cartItems = cart.flatMap((item) => {
+        const lines = [{
+          name: item.itemName,
+          description: [
+            item.itemName,
+            item.sweetnessLevel ? `(${tTerm(lang, item.sweetnessLevel)})` : "",
+          ].filter(Boolean).join(" "),
+          priceInCents: Math.round(item.unitBasePrice * 100 * item.quantity),
+          quantity: 1,
+        }];
+        for (const topping of item.toppings) {
+          const tPrice = typeof topping.price === "number" && Number.isFinite(topping.price) ? topping.price : 0;
+          if (tPrice > 0) {
+            lines.push({
+              name: `${tTerm(lang, topping.name)}`,
+              description: topping.name,
+              priceInCents: Math.round(tPrice * 100 * item.quantity),
+              quantity: 1,
+            });
+          }
+        }
+        return lines;
+      });
+
+      const res = await fetch(`${API_BASE_URL}/api/create-paddle-transaction`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cartItems, deliveryAddress: deliveryAddress.trim() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Checkout failed");
+
+      paddle.Checkout.open({
+        transactionId: data.transactionId,
+        settings: {
+          successUrl: `${window.location.origin}${window.location.pathname}?checkout=success`,
+        },
+      });
+    } catch (err) {
+      setCheckoutError(err instanceof Error ? err.message : "Failed to start checkout.");
+    }
   };
 
   const sendContactMessage = async (event: FormEvent<HTMLFormElement>) => {
@@ -385,10 +405,7 @@ export function TeaShopPreview({
 
         {config.isDeliveryEnabled ? <section id="delivery" className="tsp__section tsp__section--alt"><div className="tsp__sectionHead"><h2 className="tsp__sectionTitle">{ui.checkoutTitle}</h2><p className="tsp__sectionSub">{ui.checkoutSub}</p></div><div className="tsp__checkoutGrid"><div className="tsp__card"><h3 className="tsp__cardTitle">{ui.yourCart}</h3>{cart.length === 0 ? <p className="tsp__cardBody">{ui.cartEmpty}</p> : null}{cart.map((item) => (<div key={item.id} className="tsp__cartLine"><div><strong>{item.itemName}</strong>{item.sweetnessLevel ? <p className="tsp__cardBody">{ui.sweetness}: {tTerm(lang, item.sweetnessLevel)}</p> : null}{item.toppings.length > 0 ? <p className="tsp__cardBody">{ui.toppings}: {item.toppings.map((t) => `${tTerm(lang, t.name)}${t.price ? ` (+${formatUsd(t.price)})` : ""}`).join(", ")}</p> : null}</div><div className="tsp__menuPrice">{formatUsd(lineTotal(item))}</div></div>))}<div className="tsp__totals"><div><span>{ui.subtotal}</span><span>{formatUsd(subtotal)}</span></div><div><span>{ui.deliveryFee}</span><span>{formatUsd(deliveryFee)}</span></div><div className="tsp__grand"><span>{ui.total}</span><span>{formatUsd(total)}</span></div></div></div>
             <div className="tsp__card"><h3 className="tsp__cardTitle">{ui.checkout}</h3><label className="tsp__fieldLabel" htmlFor="address">{ui.deliveryAddress}</label><input id="address" className="tsp__input" value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} />
-              <label className="tsp__fieldLabel" htmlFor="cardName">{ui.cardholderName}</label><input id="cardName" className="tsp__input" value={payment.cardholderName} onChange={(e) => setPayment((prev) => ({ ...prev, cardholderName: e.target.value }))} />
-              <label className="tsp__fieldLabel" htmlFor="cardNumber">{ui.cardNumber}</label><input id="cardNumber" className="tsp__input" inputMode="numeric" value={payment.cardNumber} onChange={(e) => setPayment((prev) => ({ ...prev, cardNumber: maskCardNumber(e.target.value) }))} placeholder="1234 5678 9012 3456" />
-              <div className="tsp__row2"><div><label className="tsp__fieldLabel" htmlFor="exp">{ui.expirationDate}</label><input id="exp" className="tsp__input" inputMode="numeric" value={payment.expirationDate} onChange={(e) => setPayment((prev) => ({ ...prev, expirationDate: maskExpDate(e.target.value) }))} placeholder="MM/YY" /></div><div><label className="tsp__fieldLabel" htmlFor="cvv">CVV</label><input id="cvv" className="tsp__input" type="password" inputMode="numeric" value={payment.cvv} onChange={(e) => setPayment((prev) => ({ ...prev, cvv: maskCvv(e.target.value) }))} placeholder="123" /></div></div>
-              {checkoutError ? <p className="tsp__error">{checkoutError}</p> : null}<button type="button" className="tsp__btn tsp__btn--primary" onClick={placeOrder}>{ui.placeOrder}</button>{placedOrder ? <p className="tsp__success">{ui.orderPlaced} {placedOrder.id} {ui.orderPlacedSuffix} {formatUsd(placedOrder.total)}.</p> : null}
+              {checkoutError ? <p className="tsp__error">{checkoutError}</p> : null}<button type="button" className="tsp__btn tsp__btn--primary" onClick={placeOrder}>{ui.placeOrder}</button>
             </div></div></section> : null}
 
         <section id="contact" className="tsp__section tsp__section--alt"><div className="tsp__sectionHead"><h2 className="tsp__sectionTitle">{ui.contactTitle}</h2><p className="tsp__sectionSub">{ui.contactSub}</p></div><div className="tsp__contactWrap"><div className="tsp__card"><form onSubmit={sendContactMessage}><div className="tsp__row2"><div><label className="tsp__fieldLabel" htmlFor="contactFirst">{ui.firstName}</label><input id="contactFirst" className="tsp__input" value={contact.firstName} onChange={(e) => setContact((prev) => ({ ...prev, firstName: e.target.value }))} /></div><div><label className="tsp__fieldLabel" htmlFor="contactLast">{ui.lastName}</label><input id="contactLast" className="tsp__input" value={contact.lastName} onChange={(e) => setContact((prev) => ({ ...prev, lastName: e.target.value }))} /></div></div><label className="tsp__fieldLabel" htmlFor="contactEmail">{ui.email}</label><input id="contactEmail" type="email" className="tsp__input" value={contact.email} onChange={(e) => setContact((prev) => ({ ...prev, email: e.target.value }))} /><label className="tsp__fieldLabel" htmlFor="contactMessage">{ui.message}</label><textarea id="contactMessage" className="tsp__input tsp__textarea" value={contact.message} onChange={(e) => setContact((prev) => ({ ...prev, message: e.target.value }))} rows={5} />{contactError ? <p className="tsp__error">{contactError}</p> : null}{contactStatus ? <p className="tsp__success">{contactStatus}</p> : null}<button type="submit" className="tsp__btn tsp__btn--primary" disabled={isContactSubmitting}>{isContactSubmitting ? ui.sending : ui.send}</button></form></div></div></section>

@@ -47,6 +47,38 @@ app.post("/api/create-dynamic-checkout", express.json(), async (req, res) => {
   }
 });
 
+// --- Stripe: Hosted Checkout Session (redirect-based) ---
+app.post("/api/create-checkout-session", express.json(), async (req, res) => {
+  try {
+    const { cartItems } = req.body;
+
+    if (!Array.isArray(cartItems) || cartItems.length === 0) {
+      return res.status(400).json({ error: "cartItems must be a non-empty array." });
+    }
+
+    const lineItems = cartItems.map((item) => ({
+      price_data: {
+        currency: "usd",
+        product_data: { name: item.name },
+        unit_amount: item.priceInCents,
+      },
+      quantity: item.quantity,
+    }));
+
+    const session = await stripe.checkout.sessions.create({
+      line_items: lineItems,
+      mode: "payment",
+      success_url: `${clientOrigin}/?checkout=success`,
+      cancel_url: `${clientOrigin}/#delivery`,
+    });
+
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error("Stripe session error:", err);
+    res.status(500).json({ error: "Failed to create checkout session." });
+  }
+});
+
 // --- Stripe Webhook ---
 app.post(
   "/api/webhook",
@@ -74,6 +106,67 @@ app.post(
     res.json({ received: true });
   },
 );
+
+// --- Paddle: Create Transaction ---
+app.post("/api/create-paddle-transaction", express.json(), async (req, res) => {
+  try {
+    const { cartItems, deliveryAddress } = req.body;
+
+    if (!Array.isArray(cartItems) || cartItems.length === 0) {
+      return res.status(400).json({ error: "cartItems must be a non-empty array." });
+    }
+
+    const items = cartItems.map((item) => ({
+      quantity: item.quantity || 1,
+      price: {
+        name: item.name,
+        description: item.description || item.name,
+        tax_mode: "account_setting",
+        unit_price: {
+          amount: String(item.priceInCents),
+          currency_code: "USD",
+        },
+        product: {
+          name: item.name,
+          tax_category: "standard",
+        },
+      },
+    }));
+
+    const paddleApiKey = process.env.PADDLE_API_KEY;
+    if (!paddleApiKey) {
+      return res.status(500).json({ error: "Paddle API key is not configured." });
+    }
+
+    const paddleEnv = paddleApiKey.startsWith("pdl_sdbx_") ? "sandbox" : "production";
+    const paddleBaseUrl = paddleEnv === "sandbox" ? "https://sandbox-api.paddle.com" : "https://api.paddle.com";
+
+    const response = await fetch(`${paddleBaseUrl}/transactions`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${paddleApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        items,
+        currency_code: "USD",
+        custom_data: deliveryAddress ? { delivery_address: deliveryAddress } : undefined,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error("Paddle API error:", JSON.stringify(data, null, 2));
+      return res.status(500).json({ error: "Failed to create Paddle transaction." });
+    }
+
+    res.json({ transactionId: data.data.id });
+  } catch (err) {
+    console.error("Paddle transaction error:", err);
+    res.status(500).json({ error: "Failed to create Paddle transaction." });
+  }
+});
 
 // --- Chat / AI ---
 app.post("/api/chat", express.json(), async (req, res) => {
